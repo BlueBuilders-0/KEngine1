@@ -164,6 +164,16 @@
   #statusbar .dot{color:var(--play)}
   #statusbar .sep{color:#555}
 
+  /* Draggable UI overlay in editor viewport */
+  .ui-el-editor{transition:none}
+  .ui-el-editor.selected{outline:1px dashed #4a90d9;outline-offset:3px;
+    box-shadow:0 0 0 1px rgba(74,144,217,.4)}
+  .ui-el-editor .ui-resize-handle{position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;
+    background:#4a90d9;border:1px solid #fff;border-radius:2px;cursor:nwse-resize;z-index:20;
+    box-shadow:0 1px 4px rgba(0,0,0,.4)}
+  .ui-el-editor .ui-el-label{position:absolute;left:0;top:-18px;background:#4a90d9;color:#fff;
+    font-size:9px;padding:1px 5px;border-radius:2px 2px 0 0;pointer-events:none;white-space:nowrap}
+
   ::-webkit-scrollbar{width:9px;height:9px}
   ::-webkit-scrollbar-thumb{background:#3c3c3c;border-radius:0}
   ::-webkit-scrollbar-thumb:hover{background:#4a4a4a}
@@ -268,6 +278,8 @@
     <span class="sep">|</span>
     <span id="statusObjects">0 objects</span>
     <span class="spacer"></span>
+    <span id="statusHint"></span>
+    <span class="sep">|</span>
     <span id="statusFps">0 fps</span>
   </div>
 </div>
@@ -726,9 +738,15 @@ function KRuntime(THREE, CANNON, deps, opts) {
             for (var i = 0; i < arr.length; i++) arr[i].color = new THREE.Color(c);
           }
         });
+        if (rec.uiNode) {
+          if (rec.def.type === 'uitext' || rec.def.type === 'uibutton') rec.uiNode.style.color = c;
+          if (rec.def.type === 'uiframe') rec.uiNode.style.borderColor = c;
+        }
       },
       setVisible: function (v) { o.visible = !!v; },
       setText: function (t) {
+        rec.def.props.text = t;
+        if (rec.uiNode) rec.uiNode.textContent = t;
         if (rec.textMesh) {
           var p = rec.textMesh.parent;
           var nm = textPlane(t, rec.def.props.size || 1, rec.def.props.color || '#ffffff', rec.def.props.bg);
@@ -1187,7 +1205,6 @@ function KRuntime(THREE, CANNON, deps, opts) {
     if (!p) return;
     var cam = p.cam;
 
-    /* mouse orbit */
     if (input.mouse.locked) {
       cam.yaw -= input.mouse.dx * 0.0022;
       cam.pitch -= input.mouse.dy * 0.0022;
@@ -1197,7 +1214,6 @@ function KRuntime(THREE, CANNON, deps, opts) {
     }
     cam.pitch = clamp(cam.pitch, -0.85, 1.25);
 
-    /* C toggles third person */
     if (input.keys['KeyC'] && !p._cHeld) {
       p._cHeld = true;
       p.thirdPerson = !p.thirdPerson;
@@ -1206,7 +1222,6 @@ function KRuntime(THREE, CANNON, deps, opts) {
     }
     if (!input.keys['KeyC']) p._cHeld = false;
 
-    /* Q resets camera behind player */
     if (input.keys['KeyQ'] && !p._qHeld) {
       p._qHeld = true;
       cam.initialized = false;
@@ -1215,12 +1230,10 @@ function KRuntime(THREE, CANNON, deps, opts) {
     }
     if (!input.keys['KeyQ']) p._qHeld = false;
 
-    /* zoom */
     var zoom = (input.keys['PageUp'] ? 1 : 0) - (input.keys['PageDown'] ? 1 : 0);
     cam.dist = clamp(cam.dist - zoom * dt * 8 + (input.wheel || 0) * 0.6, 1.2, 30);
     input.wheel = 0;
 
-    /* movement */
     var fwd = (input.keys['KeyW'] ? 1 : 0) - (input.keys['KeyS'] ? 1 : 0);
     var strafe = (input.keys['KeyD'] ? 1 : 0) - (input.keys['KeyA'] ? 1 : 0);
     var sin = Math.sin(cam.yaw), cos = Math.cos(cam.yaw);
@@ -1233,7 +1246,6 @@ function KRuntime(THREE, CANNON, deps, opts) {
     var spd = p.speed * (running ? 1.8 : 1) * (moving ? 1 : 0);
 
     if (p.isObjectPlayer) {
-      /* physics / direct move */
       if (p.body) {
         p.body.velocity.x = dx * spd;
         p.body.velocity.z = dz * spd;
@@ -1251,26 +1263,18 @@ function KRuntime(THREE, CANNON, deps, opts) {
         if (p.obj.position.y <= 0.5) { p.obj.position.y = 0.5; p.vy = 0; }
       }
 
-      /* ---- CHARACTER ROTATION FROM MOUSE ---- */
       var targetYaw;
-      if (moving) {
-        /* face movement direction */
-        targetYaw = Math.atan2(dx, dz);
-      } else if (p.thirdPerson && p.faceCamera) {
-        /* face camera direction (like GTA / Fortnite) */
+      if (p.thirdPerson && p.faceCamera) {
         targetYaw = cam.yaw;
+      } else if (moving) {
+        targetYaw = Math.atan2(dx, dz);
       } else {
         targetYaw = p.obj.rotation.y;
-      }
-      if (p.thirdPerson && p.faceCamera) {
-        /* always follow mouse smoothly, even while moving */
-        targetYaw = cam.yaw;
       }
       var diff = ((targetYaw - p.obj.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
       var turnSpeed = moving ? 14 : 18;
       p.obj.rotation.y += diff * Math.min(1, dt * turnSpeed);
 
-      /* animation state */
       if (p.rec && p.rec.mixer && p.rec.clips && p.rec.clips.length) {
         var wantName = !moving ? 'idle' : (running ? 'run' : 'walk');
         var clip = null;
@@ -1287,7 +1291,6 @@ function KRuntime(THREE, CANNON, deps, opts) {
         }
       }
 
-      /* ---- SMOOTH THIRD PERSON CAMERA ---- */
       if (p.thirdPerson) {
         var head = p.height;
         var px = p.obj.position.x, py = p.obj.position.y, pz = p.obj.position.z;
@@ -1314,7 +1317,6 @@ function KRuntime(THREE, CANNON, deps, opts) {
         R.camera.position.copy(cam.pos);
         R.camera.lookAt(cam.target.x, cam.target.y, cam.target.z);
       } else {
-        /* first person */
         var eyeY = p.obj.position.y + head * 0.92;
         R.camera.position.set(p.obj.position.x, eyeY, p.obj.position.z);
         var dir = new THREE.Vector3(
@@ -1325,7 +1327,6 @@ function KRuntime(THREE, CANNON, deps, opts) {
         R.camera.lookAt(R.camera.position.x + dir.x, R.camera.position.y + dir.y, R.camera.position.z + dir.z);
       }
     } else {
-      /* camera-only player */
       if (p.body) {
         p.body.velocity.x = dx * spd;
         p.body.velocity.z = dz * spd;
@@ -1550,6 +1551,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
     get missions() { return R.missions; },
     get missionState() { return R.missionState; },
     get player() { return R.player; },
+    get renderer() { return R.renderer; },
     find: function (n) { return R.byName[n] ? R.byName[n].api : null; },
     all: function () { return R.objects.map(function (r) { return r.api; }); },
     spawn: function (def) { return build(def, R.scene).api; },
@@ -1877,6 +1879,12 @@ function updateStatusBar() {
   $('#statusObjects').textContent = objs + ' object' + (objs === 1 ? '' : 's');
   var playerDef = allObjectDefs().filter(function (d) { return d.props.isPlayer; })[0];
   $('#statusPlayer').textContent = playerDef ? 'Player: ' + playerDef.name : 'No player';
+  var sel = state.selected && state.selected.userData.def;
+  if (sel && sel.type.indexOf('ui') === 0) {
+    $('#statusHint').textContent = 'UI mode: drag element in viewport, or use arrow keys (Shift = 10px)';
+  } else {
+    $('#statusHint').textContent = '';
+  }
 }
 
 /* =====================================================================
@@ -2249,6 +2257,8 @@ function selectObject(obj) {
     setStatus('Ready');
   }
   refreshTree();
+  refreshUILayer();
+  updateStatusBar();
 }
 
 function deleteObject(obj) {
@@ -2274,15 +2284,21 @@ function duplicateObject(obj) {
   var d = deepCopy(obj.userData.def);
   d.id = uid('o');
   d.name = d.name + '_copy';
-  d.pos = [obj.position.x + 1, obj.position.y, obj.position.z + 1];
+  if (d.type.indexOf('ui') === 0) {
+    d.props.x = (d.props.x || 20) + 12;
+    d.props.y = (d.props.y || 20) + 12;
+  } else {
+    d.pos = [obj.position.x + 1, obj.position.y, obj.position.z + 1];
+  }
   var parent = obj.parent && obj.parent.userData && obj.parent.userData.def ? obj.parent : editorScene;
   var n = buildEditorObject(d, parent);
   refreshTree();
+  refreshUILayer();
   selectObject(n);
 }
 
 /* =====================================================================
-   SECTION 6 - UI LAYER (editor preview)
+   SECTION 6 - UI LAYER (editor preview with drag support)
    ===================================================================== */
 function refreshUILayer() {
   var layer = $('#uilayer');
@@ -2292,7 +2308,9 @@ function refreshUILayer() {
     if (!o.userData || !o.userData.def) return;
     if (o.userData.def.type.indexOf('ui') !== 0) return;
     var p = o.userData.def.props;
+    var t = o.userData.def.type;
     var n = el('div');
+    n.className = 'ui-el ui-el-editor';
     n.style.position = 'absolute';
     n.style.left = (p.x == null ? 20 : p.x) + 'px';
     n.style.top = (p.y == null ? 20 : p.y) + 'px';
@@ -2300,7 +2318,11 @@ function refreshUILayer() {
     n.style.height = (p.h || 48) + 'px';
     n.style.borderRadius = (p.radius == null ? 8 : p.radius) + 'px';
     n.style.display = o.visible ? 'block' : 'none';
-    var t = o.userData.def.type;
+    n.style.pointerEvents = 'auto';
+    n.style.cursor = 'move';
+    n.style.userSelect = 'none';
+    n.dataset.kid = o.userData.def.id;
+
     if (t === 'uitext') {
       n.style.color = p.color || '#fff';
       n.style.fontSize = (p.fontSize || 18) + 'px';
@@ -2328,10 +2350,99 @@ function refreshUILayer() {
       n.style.border = '2px solid ' + (p.color || '#3ea6ff');
       n.style.background = p.bg || 'rgba(10,20,30,.55)';
     }
-    n.style.pointerEvents = 'none';
-    n.style.outline = state.selected === o ? '1px dashed #3d7ebd' : 'none';
+
+    var isSelected = state.selected === o;
+    if (isSelected) {
+      n.classList.add('selected');
+      var lbl = el('div', 'ui-el-label', o.userData.def.name);
+      n.appendChild(lbl);
+    }
+
+    // Drag to move (any UI element)
+    n.addEventListener('mousedown', function (ev) {
+      if (state.playing) return;
+      if (ev.target && ev.target.dataset && ev.target.dataset.handle === 'resize') return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (state.selected !== o) selectObject(o);
+      dragUIElement(o, 'move', ev);
+    });
+
+    // Resize handle
+    if (isSelected) {
+      var handle = el('div', 'ui-resize-handle');
+      handle.dataset.handle = 'resize';
+      handle.addEventListener('mousedown', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        dragUIElement(o, 'resize', ev);
+      });
+      n.appendChild(handle);
+    }
+
     layer.appendChild(n);
   });
+}
+
+function dragUIElement(obj, mode, startEvent) {
+  var def = obj.userData.def;
+  var p = def.props;
+  var startX = startEvent.clientX;
+  var startY = startEvent.clientY;
+  var origX = p.x == null ? 20 : p.x;
+  var origY = p.y == null ? 20 : p.y;
+  var origW = p.w || 200;
+  var origH = p.h || 48;
+  var layer = $('#uilayer');
+  var rect = layer.getBoundingClientRect();
+  var node = layer.querySelector('[data-kid="' + def.id + '"]');
+
+  document.body.style.cursor = mode === 'move' ? 'move' : 'nwse-resize';
+  document.body.style.userSelect = 'none';
+
+  function updateInspectorFields() {
+    $$('#pane-inspector .row').forEach(function (row) {
+      var lbl = row.querySelector('label');
+      if (!lbl) return;
+      var inputs = row.querySelectorAll('input');
+      if (!inputs.length) return;
+      var key = lbl.textContent.trim();
+      if (key === 'X (px)') inputs[0].value = p.x;
+      if (key === 'Y (px)') inputs[0].value = p.y;
+      if (key === 'Width') inputs[0].value = p.w;
+      if (key === 'Height') inputs[0].value = p.h;
+    });
+  }
+
+  function onMove(e) {
+    var dx = e.clientX - startX;
+    var dy = e.clientY - startY;
+    if (mode === 'move') {
+      var nx = origX + dx;
+      var ny = origY + dy;
+      nx = Math.max(0, Math.min(rect.width - (p.w || 200), nx));
+      ny = Math.max(0, Math.min(rect.height - (p.h || 48), ny));
+      p.x = Math.round(nx);
+      p.y = Math.round(ny);
+      if (node) { node.style.left = p.x + 'px'; node.style.top = p.y + 'px'; }
+    } else {
+      var nw = Math.max(20, origW + dx);
+      var nh = Math.max(16, origH + dy);
+      p.w = Math.round(nw);
+      p.h = Math.round(nh);
+      if (node) { node.style.width = p.w + 'px'; node.style.height = p.h + 'px'; }
+    }
+    updateInspectorFields();
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    pushUndo();
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
 }
 
 /* =====================================================================
@@ -2403,7 +2514,7 @@ function buildInspector(obj) {
   var props = def.props;
 
   var s1 = section('Object');
-  s1.appendChild(field('Name', def.name, function (v) { def.name = v; obj.name = v; refreshTree(); }));
+  s1.appendChild(field('Name', def.name, function (v) { def.name = v; obj.name = v; refreshTree(); refreshUILayer(); }));
   s1.appendChild(el('p', 'hint', 'Type: ' + def.type + '  |  ID: ' + def.id));
   s1.appendChild(selectField('Parent', def.parent || '', [{ label: '(scene root)', value: '' }].concat(
     allObjectDefs().filter(function (d) { return d.id !== def.id; }).map(function (d) { return { label: d.name, value: d.id }; })
@@ -2442,8 +2553,46 @@ function buildInspector(obj) {
     buildWorldPanel();
     updateStatusBar();
   }));
-  sp.appendChild(el('p', 'hint', 'Only one object can be the player. Models, characters, and shapes all work.'));
+  sp.appendChild(el('p', 'hint', 'Only one object can be the player.'));
   pane.appendChild(sp);
+
+  if (def.type.indexOf('ui') === 0) {
+    var sui = section('UI - Drag in Viewport');
+    sui.appendChild(el('p', 'hint', 'Drag the element in the scene viewport to move it. Drag the blue square at the bottom-right to resize. Arrow keys nudge 1px (hold Shift for 10px).'));
+    var recenterBtn = el('button', null, 'Snap to Viewport Center');
+    recenterBtn.onclick = function () {
+      var vp = $('#viewport');
+      var w = vp.clientWidth || 800;
+      var h = vp.clientHeight || 600;
+      props.x = Math.round(w / 2 - (props.w || 200) / 2);
+      props.y = Math.round(h / 2 - (props.h || 48) / 2);
+      refreshUILayer();
+      buildInspector(obj);
+    };
+    sui.appendChild(recenterBtn);
+    var topLeftBtn = el('button', null, 'Snap to Top-Left');
+    topLeftBtn.onclick = function () { props.x = 12; props.y = 12; refreshUILayer(); buildInspector(obj); };
+    sui.appendChild(topLeftBtn);
+    var topRightBtn = el('button', null, 'Snap to Top-Right');
+    topRightBtn.onclick = function () {
+      var vp = $('#viewport');
+      props.x = Math.max(0, (vp.clientWidth || 800) - (props.w || 200) - 12);
+      props.y = 12;
+      refreshUILayer();
+      buildInspector(obj);
+    };
+    sui.appendChild(topRightBtn);
+    var bottomLeftBtn = el('button', null, 'Snap to Bottom-Left');
+    bottomLeftBtn.onclick = function () {
+      var vp = $('#viewport');
+      props.x = 12;
+      props.y = Math.max(0, (vp.clientHeight || 600) - (props.h || 48) - 12);
+      refreshUILayer();
+      buildInspector(obj);
+    };
+    sui.appendChild(bottomLeftBtn);
+    pane.appendChild(sui);
+  }
 
   var s2 = section('Transform');
   var posRow = vecRow('Position', obj.position.toArray(), function (v) { obj.position.fromArray(v); def.pos = v; });
@@ -2830,7 +2979,7 @@ function addDef(def) {
   refreshTree();
   refreshUILayer();
   selectObject(obj);
-  if (parent) {
+  if (parent && def.type.indexOf('ui') !== 0) {
     obj.position.add(new THREE.Vector3(0, 0.5, 0));
     def.pos = obj.position.toArray();
   }
@@ -3142,24 +3291,7 @@ function buildCodePanel() {
   var ta = el('textarea');
   ta.rows = 14; ta.spellcheck = false;
   ta.value = def.script || '';
-  ta.placeholder = [
-    '// Runs once when the game starts.',
-    '// me = this object, K = engine API',
-    '',
-    'K.on("start", function () {',
-    '  K.log("Hello from " + me.def.name);',
-    '});',
-    '',
-    'me.on("click", function () {',
-    '  me.setColor("#22c98a");',
-    '  K.synth("coin", 0.6);',
-    '  K.completeMission("Touch The Cube");',
-    '});',
-    '',
-    'K.on("tick", function (dt) {',
-    '  me.rotate(0, dt, 0);',
-    '});'
-  ].join('\n');
+  ta.placeholder = '// Runs once when the game starts.\n// me = this object, K = engine API\n\nK.on("start", function () {\n  K.log("Hello from " + me.def.name);\n});';
   ta.oninput = function () { def.script = ta.value; };
   s2.appendChild(ta);
   var runBtn = el('button', 'good', 'Test in Play mode');
@@ -4022,6 +4154,25 @@ window.addEventListener('keydown', function (e) {
   if (state.playing) return;
   var tag = (e.target.tagName || '').toLowerCase();
   if (tag === 'input' || tag === 'textarea') return;
+
+  // Arrow keys nudge selected UI element
+  if (state.selected && state.selected.userData.def && state.selected.userData.def.type.indexOf('ui') === 0) {
+    var def = state.selected.userData.def;
+    var p = def.props;
+    var step = e.shiftKey ? 10 : 1;
+    var moved = false;
+    if (e.key === 'ArrowLeft')  { p.x = (p.x || 20) - step; moved = true; }
+    if (e.key === 'ArrowRight') { p.x = (p.x || 20) + step; moved = true; }
+    if (e.key === 'ArrowUp')    { p.y = (p.y || 20) - step; moved = true; }
+    if (e.key === 'ArrowDown')  { p.y = (p.y || 20) + step; moved = true; }
+    if (moved) {
+      e.preventDefault();
+      refreshUILayer();
+      updateStatusBar();
+      return;
+    }
+  }
+
   if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
   else if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
   else if (e.ctrlKey && e.key.toLowerCase() === 's') { e.preventDefault(); saveProject(false); }
@@ -4030,9 +4181,9 @@ window.addEventListener('keydown', function (e) {
   else if (e.key.toLowerCase() === 'e') tcontrols.setMode('rotate');
   else if (e.key.toLowerCase() === 'r') tcontrols.setMode('scale');
   else if (e.key === 'f' && state.selected) {
-    var p = new THREE.Vector3();
-    state.selected.getWorldPosition(p);
-    orbit.target.copy(p);
+    var p2 = new THREE.Vector3();
+    state.selected.getWorldPosition(p2);
+    orbit.target.copy(p2);
   }
 });
 
