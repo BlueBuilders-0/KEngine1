@@ -933,6 +933,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
       var size = new THREE.Vector3(); box.getSize(size);
       var maxDim = Math.max(size.x, size.y, size.z) || 1;
       if (rec.def.props.autoscale !== false && maxDim > 4) root.scale.setScalar(2 / maxDim);
+      if (rec.def.type === 'character') root.rotation.y = Math.PI;
       rec.holder.add(root);
       if (gltf.animations && gltf.animations.length) {
         rec.mixer = new THREE.AnimationMixer(root);
@@ -1293,7 +1294,6 @@ function KRuntime(THREE, CANNON, deps, opts) {
         if (p.fly) p.body.velocity.y = ((input.keys['Space'] ? 1 : 0) - (input.keys['ControlLeft'] ? 1 : 0)) * spd;
         else if (input.keys['Space'] && Math.abs(p.body.velocity.y) < 0.6) p.body.velocity.y = p.jump;
         p.obj.position.set(p.body.position.x, p.body.position.y, p.body.position.z);
-        p.obj.quaternion.set(p.body.quaternion.x, p.body.quaternion.y, p.body.quaternion.z, p.body.quaternion.w);
       } else {
         p.obj.position.x += dx * spd * dt;
         p.obj.position.z += dz * spd * dt;
@@ -2200,6 +2200,7 @@ function loadEditorModel(obj, holder, props, type) {
     box.getSize(size);
     var maxDim = Math.max(size.x, size.y, size.z) || 1;
     if (props.autoscale !== false && maxDim > 4) root.scale.setScalar(2 / maxDim);
+    if (type === 'character') root.rotation.y = Math.PI;
     holder.add(root);
     obj.userData.loadedModel = root;
     obj.userData.animations = gltf.animations || [];
