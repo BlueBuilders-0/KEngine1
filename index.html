@@ -30,6 +30,7 @@
     border:1px solid var(--line2);border-radius:2px;padding:3px 6px;width:100%}
   input:focus,select:focus,textarea:focus{outline:1px solid var(--accent);border-color:var(--accent)}
   textarea{resize:vertical;font-family:Consolas,Monaco,monospace;font-size:11px;line-height:1.45}
+  input[type=range]{padding:0;background:transparent;border:0;accent-color:var(--accent-h);width:100%}
   .screen{position:fixed;inset:0}
   .hidden{display:none !important}
   .spacer{flex:1}
@@ -93,6 +94,7 @@
   .row > *{min-width:0}
   .row label{color:var(--dim);font-size:11px;flex:0 0 76px}
   .row input[type=checkbox]{width:auto;accent-color:var(--accent-h)}
+  .row input[type=range]{flex:1}
   .sec{border:1px solid var(--line2);border-radius:2px;margin-bottom:6px;background:#2d2d2d;overflow:hidden}
   .sec > h4{margin:0;padding:5px 8px;background:var(--header);font-size:10px;letter-spacing:.6px;
     color:#c8c8c8;text-transform:uppercase;border-bottom:1px solid var(--line2);cursor:pointer;user-select:none;
@@ -109,6 +111,7 @@
     padding:0 4px;line-height:14px}
   .tree li .eye{margin-left:auto;color:var(--dim);font-size:10px;padding-left:6px}
   .tree li .player{color:#7ee0a8;font-size:9px;font-weight:700}
+  .tree li .enemy{color:#ff8a8a;font-size:9px;font-weight:700}
   .card{border:1px solid var(--line2);border-radius:2px;padding:6px 7px;margin-bottom:4px;
     background:#2d2d2d;cursor:pointer}
   .card:hover{border-color:var(--accent);background:#333}
@@ -121,6 +124,14 @@
   .mission{border:1px solid var(--line2);border-radius:2px;padding:7px;margin-bottom:5px;background:#2d2d2d}
   .mission .hd{display:flex;align-items:center;gap:5px;margin-bottom:5px}
   .mission .hd b{font-size:11px;color:#7ee0a8;flex:1}
+  .bone-row{display:flex;align-items:center;gap:5px;margin-bottom:4px;padding:3px 4px;border-radius:2px;cursor:pointer}
+  .bone-row:hover{background:#333}
+  .bone-row.sel{background:var(--selected);color:#fff}
+  .bone-row .nm{flex:1;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bone-slider{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+  .bone-slider label{flex:0 0 14px;font-size:10px;color:var(--dim)}
+  .bone-slider input[type=range]{flex:1}
+  .bone-slider input[type=number]{flex:0 0 58px;font-size:10px;padding:2px 4px}
   #modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:80;display:flex;
     align-items:center;justify-content:center;padding:24px}
   #modal .box{width:min(1000px,96vw);height:min(760px,92vh);display:flex;flex-direction:column;
@@ -142,6 +153,99 @@
     box-shadow:0 1px 4px rgba(0,0,0,.4)}
   .ui-el-editor .ui-el-label{position:absolute;left:0;top:-18px;background:#4a90d9;color:#fff;
     font-size:9px;padding:1px 5px;border-radius:2px 2px 0 0;pointer-events:none;white-space:nowrap}
+
+  /* ============ REDESIGNED HEALTH UI ============ */
+  .k-hud-bar{
+    position:absolute;
+    display:flex; align-items:center; gap:8px;
+    padding:4px 10px 4px 8px;
+    background:linear-gradient(180deg, rgba(34,42,54,.85) 0%, rgba(14,18,24,.85) 100%);
+    backdrop-filter:blur(12px) saturate(140%);
+    -webkit-backdrop-filter:blur(12px) saturate(140%);
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:999px;
+    box-shadow:
+      0 6px 22px rgba(0,0,0,.5),
+      inset 0 1px 0 rgba(255,255,255,.10),
+      inset 0 -1px 0 rgba(0,0,0,.35);
+    overflow:hidden;
+    pointer-events:none;
+    font-family:"Segoe UI",Arial,sans-serif;
+    transition:opacity .35s ease, transform .25s ease;
+    z-index:5;
+  }
+  .k-hud-bar.hidden{opacity:0 !important}
+
+  .k-hud-track{
+    position:relative; flex:1;
+    height:100%; min-width:60px;
+    background:rgba(0,0,0,.5);
+    border-radius:999px;
+    overflow:hidden;
+    box-shadow:
+      inset 0 1px 2px rgba(0,0,0,.7),
+      inset 0 -1px 0 rgba(255,255,255,.05);
+  }
+  .k-hud-fill{
+    position:absolute; left:0; top:0; bottom:0;
+    width:100%;
+    background:linear-gradient(180deg, #6cf0a8 0%, #3ddc84 55%, #1fa15f 100%);
+    border-radius:999px;
+    box-shadow:
+      0 0 12px rgba(61,220,132,.55),
+      inset 0 1px 0 rgba(255,255,255,.4);
+    transition:width .28s cubic-bezier(.22,.61,.36,1),
+               background .28s ease,
+               box-shadow .28s ease;
+  }
+  .k-hud-fill.high{
+    background:linear-gradient(180deg,#6cf0a8 0%,#3ddc84 55%,#1fa15f 100%);
+    box-shadow:0 0 12px rgba(61,220,132,.55), inset 0 1px 0 rgba(255,255,255,.4);
+  }
+  .k-hud-fill.mid{
+    background:linear-gradient(180deg,#ffd07a 0%,#f0a030 55%,#a86d16 100%);
+    box-shadow:0 0 14px rgba(240,160,48,.6), inset 0 1px 0 rgba(255,255,255,.4);
+  }
+  .k-hud-fill.low{
+    background:linear-gradient(180deg,#ff7d7d 0%,#e33a3a 55%,#8a1a1a 100%);
+    box-shadow:0 0 16px rgba(227,58,58,.65), inset 0 1px 0 rgba(255,255,255,.4);
+  }
+
+  .k-hud-text{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700; color:#fff;
+    text-shadow:0 1px 2px rgba(0,0,0,.9), 0 0 4px rgba(0,0,0,.5);
+    letter-spacing:.6px;
+    pointer-events:none;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .k-hud-heart{
+    display:flex; align-items:center; justify-content:center;
+    width:20px; height:20px;
+    font-size:13px;
+    color:#ff5577;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.75));
+    transition:color .25s ease, transform .15s ease;
+    flex:0 0 auto;
+  }
+  .k-hud-bar.low .k-hud-heart{
+    color:#ff2038;
+    animation:hudHeartPulse .9s ease-in-out infinite;
+  }
+  @keyframes hudHeartPulse{
+    0%,100%{transform:scale(1)}
+    50%{transform:scale(1.22)}
+  }
+
+  .k-dmg-flash{
+    position:fixed; inset:0; pointer-events:none; z-index:100;
+    background:radial-gradient(ellipse at center, transparent 35%, rgba(210,25,25,.55) 100%);
+    opacity:0; transition:opacity .35s ease;
+  }
+  .k-dmg-flash.on{ opacity:1; transition:opacity .05s; }
+
   ::-webkit-scrollbar{width:9px;height:9px}
   ::-webkit-scrollbar-thumb{background:#3c3c3c;border-radius:0}
   ::-webkit-scrollbar-thumb:hover{background:#4a4a4a}
@@ -231,6 +335,7 @@
         <button class="tab" data-tab="code">Code</button>
         <button class="tab" data-tab="cutscene">Cutscene</button>
         <button class="tab" data-tab="world">World</button>
+        <button class="tab" data-tab="graphics">Graphics</button>
       </div>
       <div class="tabpane hidden" id="pane-inspector"></div>
       <div class="tabpane hidden" id="pane-logic"></div>
@@ -238,6 +343,7 @@
       <div class="tabpane hidden" id="pane-code"></div>
       <div class="tabpane hidden" id="pane-cutscene"></div>
       <div class="tabpane hidden" id="pane-world"></div>
+      <div class="tabpane hidden" id="pane-graphics"></div>
     </div>
   </div>
 
@@ -342,32 +448,18 @@ const TEXTURE_SOURCES = [
 ];
 
 const FONT_FAMILIES = [
-  'Segoe UI, Arial',
-  'Arial, sans-serif',
-  'Helvetica, sans-serif',
-  'Verdana, sans-serif',
-  'Tahoma, sans-serif',
-  'Trebuchet MS, sans-serif',
-  'Georgia, serif',
-  'Times New Roman, serif',
-  'Garamond, serif',
-  'Courier New, monospace',
-  'Consolas, monospace',
-  'Monaco, monospace',
-  'Menlo, monospace',
-  'Impact, sans-serif',
-  'Comic Sans MS, cursive',
-  'Palatino Linotype, serif',
-  'Brush Script MT, cursive',
-  'Lucida Console, monospace',
-  'system-ui, sans-serif'
+  'Segoe UI, Arial','Arial, sans-serif','Helvetica, sans-serif','Verdana, sans-serif',
+  'Tahoma, sans-serif','Trebuchet MS, sans-serif','Georgia, serif','Times New Roman, serif',
+  'Garamond, serif','Courier New, monospace','Consolas, monospace','Monaco, monospace',
+  'Menlo, monospace','Impact, sans-serif','Comic Sans MS, cursive','Palatino Linotype, serif',
+  'Brush Script MT, cursive','Lucida Console, monospace','system-ui, sans-serif'
 ];
 
 const SYNTH_SOUNDS = [
   { n:'Beep', k:'beep' },{ n:'Explosion', k:'explosion' },{ n:'Jump', k:'jump' },
   { n:'Coin', k:'coin' },{ n:'Laser', k:'laser' },{ n:'Footstep', k:'footstep' },
   { n:'Click', k:'click' },{ n:'Whoosh', k:'whoosh' },{ n:'Power Up', k:'powerup' },
-  { n:'Ambient Pad', k:'pad' }
+  { n:'Ambient Pad', k:'pad' },{ n:'Hurt', k:'hurt' },{ n:'Enemy Growl', k:'growl' }
 ];
 
 const AUDIO_SOURCES = [
@@ -407,6 +499,10 @@ function KRuntime(THREE, CANNON, deps, opts) {
   R.mixers = [];
   R.particles = [];
   R.player = null;
+  R.enemies = [];
+  R.playerHealth = 100;
+  R.maxHealth = 100;
+  R.playerDead = false;
   R.net = null;
   R.netPeers = [];
   R.netRole = 'none';
@@ -425,6 +521,8 @@ function KRuntime(THREE, CANNON, deps, opts) {
   R.missionState = {};
   R.saveKey = 'default';
   R.settings = {};
+  R.healthHud = null;
+  R.dmgFlash = null;
 
   var input = {
     keys: {},
@@ -536,6 +634,17 @@ function KRuntime(THREE, CANNON, deps, opts) {
       for (i = 0; i < 6; i++) o.frequency.setValueAtTime(330 * Math.pow(1.26, i), t + i * 0.06);
       g.gain.setValueAtTime(volume * 0.28, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
       o.connect(g); o.start(t); o.stop(t + 0.5);
+    } else if (kind === 'hurt') {
+      o = ctx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(320, t); o.frequency.exponentialRampToValueAtTime(80, t + 0.2);
+      g.gain.setValueAtTime(volume * 0.35, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+      o.connect(g); o.start(t); o.stop(t + 0.26);
+    } else if (kind === 'growl') {
+      o = ctx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(110, t); o.frequency.linearRampToValueAtTime(60, t + 0.4);
+      var g2b = ctx.createGain(); g2b.gain.setValueAtTime(volume * 0.3, t);
+      g2b.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      o.connect(g2b); g2b.connect(g); o.start(t); o.stop(t + 0.5);
     } else {
       o = ctx.createOscillator(); o2 = ctx.createOscillator();
       o.type = 'sine'; o2.type = 'sine';
@@ -600,6 +709,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
       vars: R.vars,
       missions: R.missionState,
       playerPos: R.player && R.player.obj ? R.player.obj.position.toArray() : null,
+      health: R.playerHealth,
       time: Date.now()
     };
     try { localStorage.setItem(saveKey(), JSON.stringify(data)); } catch (e) {}
@@ -614,10 +724,12 @@ function KRuntime(THREE, CANNON, deps, opts) {
       var data = JSON.parse(raw);
       if (data.vars) R.vars = data.vars;
       if (data.missions) R.missionState = data.missions;
+      if (typeof data.health === 'number') R.playerHealth = data.health;
       if (data.playerPos && R.player && R.player.obj) {
         R.player.obj.position.fromArray(data.playerPos);
-        if (R.player.body) R.player.body.position.set(data.playerPos[0], data.playerPos[1] + 1, data.playerPos[2]);
+        if (R.player.body) R.player.body.position.set(data.playerPos[0], data.playerPos[1] + (R.player.yOffset || 0.9), data.playerPos[2]);
       }
+      updateHealthHud();
       fire('gameLoaded', null, data);
       return true;
     } catch (e) { return false; }
@@ -660,6 +772,196 @@ function KRuntime(THREE, CANNON, deps, opts) {
     return { done: done, total: total, percent: total ? Math.round(done / total * 100) : 0 };
   };
 
+  /* ==========================================================
+     HEALTH SYSTEM - REDESIGNED HUD
+     ========================================================== */
+  function healthCfg() {
+    var p = (R.settings && R.settings.player) || {};
+    var c = p.healthUI || {};
+    return {
+      show: c.show !== false,
+      position: c.position || 'bottom-left',
+      width: c.width == null ? 260 : c.width,
+      height: c.height == null ? 26 : c.height,
+      cornerRadius: c.cornerRadius == null ? 999 : c.cornerRadius,
+      opacity: c.opacity == null ? 1 : c.opacity,
+      showText: c.showText !== false,
+      textStyle: c.textStyle || 'number',
+      showHeart: c.showHeart !== false,
+      trackColor: c.trackColor || 'rgba(0,0,0,.5)',
+      borderColor: c.borderColor || 'rgba(255,255,255,.14)',
+      lowColor: c.lowColor || '',
+      midColor: c.midColor || '',
+      highColor: c.highColor || ''
+    };
+  }
+
+  function positionHud(hud, pos) {
+    hud.style.left = '';
+    hud.style.right = '';
+    hud.style.top = '';
+    hud.style.bottom = '';
+    hud.style.transform = '';
+    switch (pos) {
+      case 'top-left':      hud.style.left = '18px';  hud.style.top = '18px'; break;
+      case 'top-center':    hud.style.left = '50%';   hud.style.top = '18px'; hud.style.transform = 'translateX(-50%)'; break;
+      case 'top-right':     hud.style.right = '18px'; hud.style.top = '18px'; break;
+      case 'bottom-center': hud.style.left = '50%';   hud.style.bottom = '18px'; hud.style.transform = 'translateX(-50%)'; break;
+      case 'bottom-right':  hud.style.right = '18px'; hud.style.bottom = '18px'; break;
+      case 'bottom-left':
+      default:              hud.style.left = '18px';  hud.style.bottom = '18px'; break;
+    }
+  }
+
+  function ensureHealthHud() {
+    if (R.healthHud || !R.uiRoot) return;
+    var cfg = healthCfg();
+
+    var hud = document.createElement('div');
+    hud.className = 'k-hud-bar';
+
+    var heart = document.createElement('div');
+    heart.className = 'k-hud-heart';
+    heart.textContent = '\u2764';
+
+    var track = document.createElement('div');
+    track.className = 'k-hud-track';
+
+    var fill = document.createElement('div');
+    fill.className = 'k-hud-fill high';
+
+    var txt = document.createElement('div');
+    txt.className = 'k-hud-text';
+    txt.textContent = '100';
+
+    track.appendChild(fill);
+    track.appendChild(txt);
+    hud.appendChild(heart);
+    hud.appendChild(track);
+    R.uiRoot.appendChild(hud);
+
+    R.healthHud = { hud: hud, fill: fill, txt: txt, hrt: heart, track: track };
+    applyHealthHudSettings();
+    updateHealthHud();
+  }
+
+  function applyHealthHudSettings() {
+    if (!R.healthHud) return;
+    var cfg = healthCfg();
+    var hud = R.healthHud.hud;
+
+    hud.style.width = cfg.width + 'px';
+    hud.style.height = cfg.height + 'px';
+    hud.style.borderRadius = cfg.cornerRadius + 'px';
+    hud.style.opacity = String(cfg.opacity);
+    hud.style.borderColor = cfg.borderColor;
+    R.healthHud.track.style.background = cfg.trackColor;
+    R.healthHud.track.style.borderRadius = cfg.cornerRadius + 'px';
+    R.healthHud.fill.style.borderRadius = cfg.cornerRadius + 'px';
+
+    positionHud(hud, cfg.position);
+
+    R.healthHud.txt.style.display = cfg.showText && cfg.textStyle !== 'none' ? 'flex' : 'none';
+    R.healthHud.hrt.style.display = cfg.showHeart ? 'flex' : 'none';
+
+    hud.style.display = cfg.show ? 'flex' : 'none';
+    if (cfg.show) hud.classList.remove('hidden');
+    else hud.classList.add('hidden');
+  }
+  R.applyHealthHudSettings = applyHealthHudSettings;
+
+  function updateHealthHud() {
+    if (!R.healthHud) return;
+    var cfg = healthCfg();
+    var pct = clamp(R.playerHealth / Math.max(1, R.maxHealth), 0, 1);
+
+    R.healthHud.fill.style.width = (pct * 100) + '%';
+    R.healthHud.fill.classList.remove('low', 'mid', 'high');
+    R.healthHud.hud.classList.remove('low');
+
+    if (pct <= 0.25) {
+      R.healthHud.fill.classList.add('low');
+      R.healthHud.hud.classList.add('low');
+    } else if (pct <= 0.6) {
+      R.healthHud.fill.classList.add('mid');
+    } else {
+      R.healthHud.fill.classList.add('high');
+    }
+
+    var custom = '';
+    if (pct <= 0.25 && cfg.lowColor) custom = cfg.lowColor;
+    else if (pct <= 0.6 && cfg.midColor) custom = cfg.midColor;
+    else if (pct > 0.6 && cfg.highColor) custom = cfg.highColor;
+    R.healthHud.fill.style.background = custom || '';
+
+    var style = cfg.textStyle;
+    var txt = '';
+    if (style === 'number') txt = Math.round(R.playerHealth).toString();
+    else if (style === 'percent') txt = Math.round(pct * 100) + '%';
+    else if (style === 'fraction') txt = Math.round(R.playerHealth) + ' / ' + R.maxHealth;
+    R.healthHud.txt.textContent = txt;
+
+    var show = cfg.show;
+    R.healthHud.hud.style.display = show ? 'flex' : 'none';
+  }
+  R.updateHealthHud = updateHealthHud;
+
+  function flashDamage() {
+    if (R.dmgFlash) { R.dmgFlash.classList.add('on'); return; }
+    var f = document.createElement('div');
+    f.className = 'k-dmg-flash on';
+    document.body.appendChild(f);
+    R.dmgFlash = f;
+    setTimeout(function () { f.classList.remove('on'); }, 60);
+  }
+
+  R.damagePlayer = function (amount, source) {
+    if (R.playerDead) return;
+    amount = Math.max(0, amount || 0);
+    R.playerHealth = Math.max(0, R.playerHealth - amount);
+    updateHealthHud();
+       updateHealthHud();
+    flashDamage();
+    fire('playerDamaged', null, { amount: amount, health: R.playerHealth, source: source || null });
+    if (R.playerHealth <= 0) {
+      R.playerDead = true;
+      fire('playerDied', null, {});
+      setTimeout(function () { R.respawnPlayer(); }, 1200);
+    }
+  };
+
+  R.healPlayer = function (amount) {
+    if (R.playerDead) return;
+    amount = Math.max(0, amount || 0);
+    R.playerHealth = Math.min(R.maxHealth, R.playerHealth + amount);
+    updateHealthHud();
+    fire('playerHealed', null, { amount: amount, health: R.playerHealth });
+  };
+
+  R.setPlayerHealth = function (v) {
+    R.playerHealth = clamp(v, 0, R.maxHealth);
+    updateHealthHud();
+    fire('healthChanged', null, { health: R.playerHealth });
+  };
+
+  R.respawnPlayer = function () {
+    R.playerDead = false;
+    R.playerHealth = R.maxHealth;
+    updateHealthHud();
+    if (R.player) {
+      var spawnRec = null;
+      for (var i = 0; i < R.objects.length; i++) if (R.objects[i].def.type === 'spawn') { spawnRec = R.objects[i]; break; }
+      var target = spawnRec ? spawnRec.obj.position.clone() : new THREE.Vector3(0, 0.1, 0);
+      if (R.player.obj) R.player.obj.position.set(target.x, target.y, target.z);
+      if (R.player.body) {
+        R.player.body.position.set(target.x, target.y + (R.player.yOffset || 0.9), target.z);
+        R.player.body.velocity.set(0, 0, 0);
+      }
+    }
+    fire('playerRespawned', null, {});
+  };
+
+  /* ------------- MATERIAL / SHAPE HELPERS ------------- */
   function materialFor(p) {
     p = p || {};
     var col = new THREE.Color(p.color || '#9aa4b2');
@@ -708,7 +1010,8 @@ function KRuntime(THREE, CANNON, deps, opts) {
 
   function syncBody(rec) {
     if (rec.body && rec.body.type !== CANNON.Body.STATIC) {
-      rec.body.position.set(rec.obj.position.x, rec.obj.position.y, rec.obj.position.z);
+      var yOff = rec.playerYOffset || 0;
+      rec.body.position.set(rec.obj.position.x, rec.obj.position.y + yOff, rec.obj.position.z);
       rec.body.quaternion.setFromEuler(rec.obj.rotation.x, rec.obj.rotation.y, rec.obj.rotation.z);
     }
   }
@@ -779,8 +1082,36 @@ function KRuntime(THREE, CANNON, deps, opts) {
         rec.def.props.isPlayer = true;
         if (R.player) R.player = null;
         initPlayer(R.settings || {});
-      }
+      },
+      makeEnemy: function (opts2) {
+        opts2 = opts2 || {};
+        rec.def.props.isEnemy = true;
+        if (opts2.speed != null) rec.def.props.enemySpeed = opts2.speed;
+        if (opts2.damage != null) rec.def.props.enemyDamage = opts2.damage;
+        if (opts2.range != null) rec.def.props.enemyRange = opts2.range;
+        if (opts2.health != null) rec.def.props.enemyHealth = opts2.health;
+        registerEnemy(rec);
+      },
+      setEnemy: function (v) {
+        rec.def.props.isEnemy = !!v;
+        if (v) registerEnemy(rec);
+        else R.enemies = R.enemies.filter(function (e) { return e !== rec; });
+      },
+      damagePlayer: function (amt) { R.damagePlayer(amt || 10, rec); },
+      healPlayer: function (amt) { R.healPlayer(amt || 10); },
+      getHealth: function () { return R.playerHealth; },
+      setHealth: function (v) { R.setPlayerHealth(v); },
+      setBone: function (boneName, rx, ry, rz) { setBoneRotation(rec, boneName, rx, ry, rz); },
+      getBone: function (boneName) { return findBone(rec, boneName); },
+      listBones: function () { return listBones(rec).map(function (b) { return b.name; }); },
+      setBoneScale: function (boneName, sx, sy, sz) { setBoneScale(rec, boneName, sx, sy, sz); }
     };
+  }
+
+  function registerEnemy(rec) {
+    if (R.enemies.indexOf(rec) < 0) R.enemies.push(rec);
+    rec.isEnemy = true;
+    rec._lastHitTime = -99;
   }
 
   function destroyObject(rec) {
@@ -799,6 +1130,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
     delete R.byId[rec.def.id];
     if (R.byName[rec.def.name] === rec) delete R.byName[rec.def.name];
     if (rec.uiNode && rec.uiNode.parentNode) rec.uiNode.parentNode.removeChild(rec.uiNode);
+    R.enemies = R.enemies.filter(function (e) { return e !== rec; });
   }
   R.destroyObject = destroyObject;
 
@@ -812,10 +1144,49 @@ function KRuntime(THREE, CANNON, deps, opts) {
   }
   R.playClip = playClip;
 
+  function listBones(rec) {
+    if (!rec || !rec.obj) return [];
+    var out = [];
+    rec.obj.traverse(function (n) { if (n.isBone) out.push(n); });
+    return out;
+  }
+  function findBone(rec, name) {
+    var list = listBones(rec);
+    for (var i = 0; i < list.length; i++) if (list[i].name === name) return list[i];
+    return null;
+  }
+  function setBoneRotation(rec, boneName, rx, ry, rz) {
+    var b = findBone(rec, boneName);
+    if (!b) return;
+    if (rx != null) b.rotation.x = rx;
+    if (ry != null) b.rotation.y = ry;
+    if (rz != null) b.rotation.z = rz;
+  }
+  function setBoneScale(rec, boneName, sx, sy, sz) {
+    var b = findBone(rec, boneName);
+    if (!b) return;
+    if (sx != null) b.scale.x = sx;
+    if (sy != null) b.scale.y = sy;
+    if (sz != null) b.scale.z = sz;
+  }
+  function applyBonePose(rec) {
+    if (!rec || !rec.def || !rec.def.props || !rec.def.props.bonePose) return;
+    var pose = rec.def.props.bonePose;
+    Object.keys(pose).forEach(function (boneName) {
+      var b = findBone(rec, boneName);
+      if (!b) return;
+      var v = pose[boneName];
+      if (v.r) b.rotation.set(v.r[0], v.r[1], v.r[2]);
+      if (v.s) b.scale.set(v.s[0], v.s[1], v.s[2]);
+    });
+  }
+  R.setBoneRotation = setBoneRotation;
+  R.listBones = listBones;
+
   function build(def, parent) {
     var obj = new THREE.Object3D();
     var props = def.props || (def.props = {});
-    var rec = { def: def, obj: obj, body: null, mixer: null, clips: [], current: null, uiNode: null };
+    var rec = { def: def, obj: obj, body: null, mixer: null, clips: [], current: null, uiNode: null, playerYOffset: 0 };
     var t = def.type;
 
     obj.userData.kid = def.id;
@@ -849,13 +1220,18 @@ function KRuntime(THREE, CANNON, deps, opts) {
       else if (kind === 'hemisphere') L = new THREE.HemisphereLight(props.color || '#ffffff', '#223344', props.intensity == null ? 1 : props.intensity);
       else L = new THREE.PointLight(props.color || '#ffffff', props.intensity == null ? 12 : props.intensity, props.distance || 0, 2);
       if (L.shadow && props.shadows !== false) {
-        L.castShadow = true; L.shadow.mapSize.set(1024, 1024);
-        if (L.shadow.camera) { L.shadow.camera.near = 0.5; L.shadow.camera.far = 120; }
+        L.castShadow = true;
+        var q = (R.settings && R.settings.graphics && R.settings.graphics.shadowQuality) || 'high';
+        var mapSize = q === 'low' ? 512 : q === 'medium' ? 1024 : q === 'ultra' ? 4096 : 2048;
+        L.shadow.mapSize.set(mapSize, mapSize);
+        if (L.shadow.camera) { L.shadow.camera.near = 0.5; L.shadow.camera.far = 160; }
         if (L.shadow.camera && L.shadow.camera.isOrthographicCamera) {
-          L.shadow.camera.left = -40; L.shadow.camera.right = 40;
-          L.shadow.camera.top = 40; L.shadow.camera.bottom = -40;
+          L.shadow.camera.left = -50; L.shadow.camera.right = 50;
+          L.shadow.camera.top = 50; L.shadow.camera.bottom = -50;
         }
-        L.shadow.bias = -0.0006;
+        L.shadow.bias = -0.0003;
+        L.shadow.normalBias = 0.02;
+        if ('radius' in L.shadow) L.shadow.radius = 2;
       }
       obj.add(L);
     } else if (t === 'camera') {
@@ -908,16 +1284,25 @@ function KRuntime(THREE, CANNON, deps, opts) {
 
     var wantsPhysics = props.physics && props.physics !== 'none';
     if (props.isPlayer) wantsPhysics = true;
+    if (props.isEnemy) wantsPhysics = true;
     if (wantsPhysics && R.world) {
       var shape;
       var sc = def.scale || [1, 1, 1];
-      if (t === 'sphere') shape = new CANNON.Sphere(0.5 * sc[0]);
+      var height = (props.isPlayer && R.settings && R.settings.player && R.settings.player.height) ? R.settings.player.height : 1.7;
+      if (props.isPlayer) {
+        var radius = 0.35;
+        var hh = height / 2;
+        shape = new CANNON.Box(new CANNON.Vec3(radius, hh, radius));
+        rec.playerYOffset = hh;
+      } else if (t === 'sphere') shape = new CANNON.Sphere(0.5 * sc[0]);
       else if (t === 'cylinder' || t === 'capsule') shape = new CANNON.Cylinder(0.5 * sc[0], 0.5 * sc[0], 1 * sc[1], 12);
       else if (t === 'plane') shape = new CANNON.Box(new CANNON.Vec3(sc[0] * 0.5, 0.02, sc[2] * 0.5));
       else shape = new CANNON.Box(new CANNON.Vec3(0.5 * sc[0], 0.5 * sc[1], 0.5 * sc[2]));
-      var mass = props.physics === 'static' ? 0 : (props.isPlayer ? 70 : (props.mass || 1));
+      var mass = props.physics === 'static' && !props.isPlayer && !props.isEnemy ? 0 : (props.isPlayer ? 70 : (props.mass || 1));
+      if (props.isEnemy) mass = props.mass || 5;
       var body = new CANNON.Body({ mass: mass, shape: shape, material: R.physMat });
-      body.position.set(obj.position.x, obj.position.y, obj.position.z);
+      var yOff = rec.playerYOffset || 0;
+      body.position.set(obj.position.x, obj.position.y + yOff, obj.position.z);
       body.quaternion.setFromEuler(obj.rotation.x, obj.rotation.y, obj.rotation.z);
       body.linearDamping = 0.05;
       if (props.isPlayer) {
@@ -928,10 +1313,18 @@ function KRuntime(THREE, CANNON, deps, opts) {
         body.sleepSpeedLimit = 0;
         body.sleepTimeLimit = 0;
       }
+      if (props.isEnemy) {
+        body.fixedRotation = true;
+        body.updateMassProperties();
+        body.linearDamping = 0.6;
+        body.allowSleep = false;
+      }
       R.world.addBody(body);
       rec.body = body;
       R.bodies.push(rec);
     }
+
+    if (props.isEnemy) registerEnemy(rec);
 
     if (def.rules) for (var r = 0; r < def.rules.length; r++) bindRule(rec, def.rules[r]);
     if (def.script && def.script.trim()) {
@@ -951,7 +1344,13 @@ function KRuntime(THREE, CANNON, deps, opts) {
       root.traverse(function (n) {
         if (n.isMesh) {
           n.castShadow = true; n.receiveShadow = true;
-          if (n.material && n.material.map && 'colorSpace' in n.material.map) n.material.map.colorSpace = THREE.SRGBColorSpace;
+          if (n.material) {
+            var mats = Array.isArray(n.material) ? n.material : [n.material];
+            mats.forEach(function (mm) {
+              if (mm.map && 'colorSpace' in mm.map) mm.map.colorSpace = THREE.SRGBColorSpace;
+              if (mm.envMapIntensity != null) mm.envMapIntensity = (R.settings && R.settings.graphics && R.settings.graphics.envIntensity) || 1;
+            });
+          }
         }
       });
       var box = new THREE.Box3().setFromObject(root);
@@ -960,6 +1359,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
       if (rec.def.props.autoscale !== false && maxDim > 4) root.scale.setScalar(2 / maxDim);
       if (rec.def.props.flipModel) root.rotation.y = Math.PI;
       rec.holder.add(root);
+      rec.modelRoot = root;
       if (gltf.animations && gltf.animations.length) {
         rec.mixer = new THREE.AnimationMixer(root);
         rec.clips = gltf.animations;
@@ -971,6 +1371,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
         rec.current.play();
         if (!rec.def.props.clipNames) rec.def.props.clipNames = gltf.animations.map(function (c) { return c.name; });
       }
+      applyBonePose(rec);
       fire('loaded', rec, {});
     }, undefined, function (e) {
       console.warn('KEngine1: could not load model ' + url, e);
@@ -1066,7 +1467,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
       rec.obj.visible = true;
       rec.def.visible = true;
       n.style.display = displayStyle;
-      n.style.pointerEvents = rec.def.type === 'uibutton' ? 'auto' : 'auto';
+      n.style.pointerEvents = 'auto';
     }
 
     var cur = parseFloat(n.style.opacity);
@@ -1128,6 +1529,9 @@ function KRuntime(THREE, CANNON, deps, opts) {
     if (evt === 'key') { on('key', rec, function (d) { if (d.code === rule.key) handler(d); }); return; }
     if (evt === 'varChange') { on('varChange', rec, function (d) { if (!rule.varName || d.key === rule.varName) handler(d); }); return; }
     if (evt === 'missionComplete') { on('missionComplete', rec, function (d) { if (!rule.varName || d.name === rule.varName) handler(d); }); return; }
+    if (evt === 'playerDamaged') { on('playerDamaged', rec, handler); return; }
+    if (evt === 'playerDied') { on('playerDied', rec, handler); return; }
+    if (evt === 'playerHealed') { on('playerHealed', rec, handler); return; }
     on(evt, rec, handler);
   }
   R.bindRule = bindRule;
@@ -1180,6 +1584,24 @@ function KRuntime(THREE, CANNON, deps, opts) {
       case 'saveGame': R.saveState(); break;
       case 'loadGame': R.loadState(); break;
       case 'deleteSave': R.deleteSave(); break;
+      case 'makeEnemyAI': {
+        rec.def.props.isEnemy = true;
+        if (a.speed != null) rec.def.props.enemySpeed = argNum(a, 'speed', 2.5);
+        if (a.damage != null) rec.def.props.enemyDamage = argNum(a, 'damage', 10);
+        if (a.range != null) rec.def.props.enemyRange = argNum(a, 'range', 1.3);
+        if (a.health != null) rec.def.props.enemyHealth = argNum(a, 'health', 50);
+        registerEnemy(rec);
+        break;
+      }
+      case 'disableEnemy': rec.def.props.isEnemy = false; R.enemies = R.enemies.filter(function (e) { return e !== rec; }); break;
+      case 'damagePlayer': R.damagePlayer(argNum(a, 'value', 10), rec); break;
+      case 'healPlayer': R.healPlayer(argNum(a, 'value', 10)); break;
+      case 'setHealth': R.setPlayerHealth(argNum(a, 'value', 100)); break;
+      case 'setMaxHealth': R.maxHealth = argNum(a, 'value', 100); updateHealthHud(); break;
+      case 'respawnPlayer': R.respawnPlayer(); break;
+      case 'setBone':
+        setBoneRotation(rec, argStr(a, 'bone', ''), argNum(a, 'rx', null), argNum(a, 'ry', null), argNum(a, 'rz', null));
+        break;
     }
   }
 
@@ -1189,7 +1611,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
     R.world.broadphase = new CANNON.SAPBroadphase(R.world);
     R.world.allowSleep = true;
     R.physMat = new CANNON.Material('default');
-    var contact = new CANNON.ContactMaterial(R.physMat, R.physMat, { friction: 0.4, restitution: 0.15 });
+    var contact = new CANNON.ContactMaterial(R.physMat, R.physMat, { friction: 0.35, restitution: 0.05 });
     R.world.addContactMaterial(contact);
     if (settings.groundPhysics !== false) {
       var ground = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), material: R.physMat });
@@ -1205,9 +1627,10 @@ function KRuntime(THREE, CANNON, deps, opts) {
       var rec = R.bodies[i];
       if (!rec.body || rec.body.type === CANNON.Body.STATIC) continue;
       if (rec === (R.player && R.player.rec)) continue;
-      rec.obj.position.set(rec.body.position.x, rec.body.position.y, rec.body.position.z);
+      var yOff = rec.playerYOffset || 0;
+      rec.obj.position.set(rec.body.position.x, rec.body.position.y - yOff, rec.body.position.z);
       rec.obj.quaternion.set(rec.body.quaternion.x, rec.body.quaternion.y, rec.body.quaternion.z, rec.body.quaternion.w);
-      if (rec.body.position.y < -60) {
+      if (rec.body.position.y < -80) {
         rec.body.position.set(rec.def.pos[0], rec.def.pos[1] + 3, rec.def.pos[2]);
         rec.body.velocity.set(0, 0, 0);
       }
@@ -1233,22 +1656,26 @@ function KRuntime(THREE, CANNON, deps, opts) {
       if (s.halfExtents) return Math.max(s.halfExtents.x, s.halfExtents.z);
       if (s.radius) return s.radius;
     }
-    return 0.5;
+    return 0.4;
   }
 
   function initPlayer(settings) {
     R.settings = settings;
+    R.maxHealth = settings.player && settings.player.maxHealth ? settings.player.maxHealth : 100;
+    R.playerHealth = R.maxHealth;
+    ensureHealthHud();
+    updateHealthHud();
     if (!settings.player || !settings.player.enabled) return;
     var spawn = null;
     for (var i = 0; i < R.objects.length; i++) if (R.objects[i].def.type === 'spawn') spawn = R.objects[i];
-    var start = spawn ? spawn.obj.position.clone() : new THREE.Vector3(0, 2, 0);
+    var start = spawn ? spawn.obj.position.clone() : new THREE.Vector3(0, 0.1, 0);
 
     var playerRec = null;
-    for (var i = 0; i < R.objects.length; i++) if (R.objects[i].def.props.isPlayer) playerRec = R.objects[i];
+    for (var j = 0; j < R.objects.length; j++) if (R.objects[j].def.props.isPlayer) playerRec = R.objects[j];
 
     var cam = {
       yaw: 0,
-      pitch: 0.22,
+      pitch: 0.18,
       dist: settings.player.camDist || 5.5,
       height: settings.player.camHeight || 1.6,
       smooth: settings.player.camSmooth == null ? 0.82 : settings.player.camSmooth,
@@ -1256,15 +1683,18 @@ function KRuntime(THREE, CANNON, deps, opts) {
       target: new THREE.Vector3(),
       initialized: false
     };
-
     var faceCamera = settings.player.faceCamera !== false;
+    var height = settings.player.height || 1.7;
 
     if (playerRec) {
-      if (R.world && !playerRec.body) {
-        var sc = playerRec.def.scale || [1, 1, 1];
-        var rad = Math.max(sc[0], sc[2]) * 0.5;
-        var body = new CANNON.Body({ mass: 70, shape: new CANNON.Sphere(rad), material: R.physMat });
-        body.position.set(playerRec.obj.position.x, playerRec.obj.position.y + 1, playerRec.obj.position.z);
+      if (R.world) {
+        if (playerRec.body) { R.world.removeBody(playerRec.body); R.bodies = R.bodies.filter(function(b){return b!==playerRec;}); playerRec.body = null; }
+        var radius = 0.35;
+        var hh = height / 2;
+        var body = new CANNON.Body({ mass: 70, shape: new CANNON.Box(new CANNON.Vec3(radius, hh, radius)), material: R.physMat });
+        playerRec.playerYOffset = hh;
+        var py = playerRec.obj.position.y + hh;
+        body.position.set(playerRec.obj.position.x, py, playerRec.obj.position.z);
         body.fixedRotation = true;
         body.updateMassProperties();
         body.linearDamping = 0;
@@ -1282,38 +1712,45 @@ function KRuntime(THREE, CANNON, deps, opts) {
         fly: !!settings.player.fly,
         thirdPerson: settings.player.thirdPerson !== false,
         faceCamera: faceCamera,
-        height: settings.player.height || 1.6,
+        height: height,
         isObjectPlayer: true,
         currentClip: null,
         vy: 0,
         cam: cam,
-        radius: 0.5
+        radius: 0.35,
+        yOffset: playerRec.playerYOffset,
+        _peakFallVy: 0,
+        _wasAirborne: false
       };
     } else {
-      var body = null;
+      var body2 = null;
       if (R.world) {
-        body = new CANNON.Body({ mass: 70, shape: new CANNON.Sphere(0.6), material: R.physMat });
-        body.position.set(start.x, start.y + 1, start.z);
-        body.fixedRotation = true;
-        body.updateMassProperties();
-        body.linearDamping = 0;
-        body.allowSleep = false;
-        body.sleepSpeedLimit = 0;
-        body.sleepTimeLimit = 0;
-        R.world.addBody(body);
+        var hh2 = height / 2;
+        body2 = new CANNON.Body({ mass: 70, shape: new CANNON.Box(new CANNON.Vec3(0.35, hh2, 0.35)), material: R.physMat });
+        body2.position.set(start.x, start.y + hh2, start.z);
+        body2.fixedRotation = true;
+        body2.updateMassProperties();
+        body2.linearDamping = 0;
+        body2.allowSleep = false;
+        body2.sleepSpeedLimit = 0;
+        body2.sleepTimeLimit = 0;
+        R.world.addBody(body2);
       }
       R.player = {
-        body: body,
+        body: body2,
         speed: settings.player.speed || 6,
         jump: settings.player.jump == null ? 7 : settings.player.jump,
         fly: !!settings.player.fly,
         thirdPerson: false,
         faceCamera: false,
-        height: 1.6,
+        height: height,
         isObjectPlayer: false,
         start: start,
         cam: cam,
-        radius: 0.5
+        radius: 0.35,
+        yOffset: height / 2,
+        _peakFallVy: 0,
+        _wasAirborne: false
       };
       if (!R.world) R.camera.position.set(start.x, start.y + 1.6, start.z);
     }
@@ -1322,6 +1759,11 @@ function KRuntime(THREE, CANNON, deps, opts) {
   function updatePlayer(dt) {
     var p = R.player;
     if (!p) return;
+    if (R.playerDead) {
+      if (p.body) { p.body.velocity.x = 0; p.body.velocity.z = 0; }
+      if (p.obj) p.obj.position.set(p.body.position.x, p.body.position.y - p.yOffset, p.body.position.z);
+      return;
+    }
     var cam = p.cam;
 
     if (input.mouse.locked) {
@@ -1367,10 +1809,9 @@ function KRuntime(THREE, CANNON, deps, opts) {
     if (p.isObjectPlayer) {
       if (p.body && moving && !p.fly) {
         var halfExtent = getPlayerHalfExtent(p);
-        var lookAhead = halfExtent + 0.2;
+        var lookAhead = halfExtent + 0.25;
         var bodyPos = p.body.position;
         var startOffset = halfExtent + 0.02;
-
         var blockedX = false, blockedZ = false;
         if (dx !== 0) {
           var originX = bodyPos.x + Math.sign(dx) * startOffset;
@@ -1398,8 +1839,28 @@ function KRuntime(THREE, CANNON, deps, opts) {
         p.body.velocity.x = dx * spd;
         p.body.velocity.z = dz * spd;
         if (p.fly) p.body.velocity.y = ((input.keys['Space'] ? 1 : 0) - (input.keys['ControlLeft'] ? 1 : 0)) * spd;
-        else if (input.keys['Space'] && Math.abs(p.body.velocity.y) < 0.6) p.body.velocity.y = p.jump;
-        p.obj.position.set(p.body.position.x, p.body.position.y, p.body.position.z);
+        else if (input.keys['Space'] && Math.abs(p.body.velocity.y) < 0.6) {
+          p.body.velocity.y = p.jump;
+          synth('jump', 0.35);
+        }
+        var vy = p.body.velocity.y;
+        if (vy < p._peakFallVy) p._peakFallVy = vy;
+        var grounded = Math.abs(vy) < 1.0 && !input.keys['Space'];
+        if (grounded && p._wasAirborne) {
+          var fall = Math.abs(p._peakFallVy);
+          if (R.settings && R.settings.player && R.settings.player.fallDamage !== false) {
+            var th = (R.settings.player.fallDamageThreshold == null ? 9 : R.settings.player.fallDamageThreshold);
+            var mul = (R.settings.player.fallDamageMultiplier == null ? 4 : R.settings.player.fallDamageMultiplier);
+            if (fall > th) {
+              var dmg = Math.floor((fall - th) * mul);
+              if (dmg > 0) R.damagePlayer(dmg, 'fall');
+            }
+          }
+          p._peakFallVy = 0;
+        }
+        p._wasAirborne = !grounded;
+        var yOff = p.yOffset || 0;
+        p.obj.position.set(p.body.position.x, p.body.position.y - yOff, p.body.position.z);
       } else {
         p.obj.position.x += dx * spd * dt;
         p.obj.position.z += dz * spd * dt;
@@ -1407,7 +1868,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
         else if (input.keys['Space'] && p.vy === 0) p.vy = p.jump;
         p.obj.position.y += p.vy * dt;
         p.vy -= 20 * dt;
-        if (p.obj.position.y <= 0.5) { p.obj.position.y = 0.5; p.vy = 0; }
+        if (p.obj.position.y <= 0.01) { p.obj.position.y = 0.01; p.vy = 0; }
       }
 
       var targetYaw;
@@ -1438,15 +1899,15 @@ function KRuntime(THREE, CANNON, deps, opts) {
         }
       }
 
+      var head = p.height;
       if (p.thirdPerson) {
-        var head = p.height;
         var px = p.obj.position.x, py = p.obj.position.y, pz = p.obj.position.z;
         var cosP = Math.cos(cam.pitch);
         var sinP = Math.sin(cam.pitch);
         var desiredX = px - Math.sin(cam.yaw) * cam.dist * cosP;
         var desiredY = py + head + cam.dist * sinP;
         var desiredZ = pz - Math.cos(cam.yaw) * cam.dist * cosP;
-        var lookX = px, lookY = py + head * 0.9, lookZ = pz;
+        var lookX = px, lookY = py + head * 0.85, lookZ = pz;
 
         if (!cam.initialized) {
           cam.pos.set(desiredX, desiredY, desiredZ);
@@ -1464,7 +1925,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
         R.camera.position.copy(cam.pos);
         R.camera.lookAt(cam.target.x, cam.target.y, cam.target.z);
       } else {
-        var eyeY = p.obj.position.y + head * 0.92;
+        var eyeY = p.obj.position.y + head * 0.9;
         R.camera.position.set(p.obj.position.x, eyeY, p.obj.position.z);
         var dir = new THREE.Vector3(
           -Math.sin(cam.yaw) * Math.cos(cam.pitch),
@@ -1491,6 +1952,62 @@ function KRuntime(THREE, CANNON, deps, opts) {
         -Math.cos(cam.yaw) * Math.cos(cam.pitch)
       );
       R.camera.lookAt(R.camera.position.x + dir2.x, R.camera.position.y + dir2.y, R.camera.position.z + dir2.z);
+    }
+  }
+
+  function updateEnemies(dt) {
+    if (!R.enemies.length) return;
+    var player = R.player;
+    if (!player || !player.obj) return;
+    var pp = player.obj.position;
+    for (var i = 0; i < R.enemies.length; i++) {
+      var rec = R.enemies[i];
+      if (!rec.obj.visible) continue;
+      var props = rec.def.props;
+      var ep = rec.obj.position;
+      var dx = pp.x - ep.x;
+      var dy = pp.y - ep.y;
+      var dz = pp.z - ep.z;
+      var dist = Math.hypot(dx, dz);
+      var dist3d = Math.hypot(dx, dy, dz);
+      var speed = props.enemySpeed == null ? 2.5 : props.enemySpeed;
+      var range = props.enemyRange == null ? 30 : props.enemyRange;
+      var attackRange = props.enemyAttackRange == null ? 1.4 : props.enemyAttackRange;
+      var stopRange = 0.9;
+      var detect = props.enemyDetectRange == null ? 30 : props.enemyDetectRange;
+
+      if (dist > stopRange && dist < detect) {
+        var nx = dx / dist, nz = dz / dist;
+        if (rec.body) {
+          rec.body.wakeUp();
+          rec.body.velocity.x = nx * speed;
+          rec.body.velocity.z = nz * speed;
+        } else {
+          ep.x += nx * speed * dt;
+          ep.z += nz * speed * dt;
+        }
+        var targetYaw = Math.atan2(nx, nz);
+        var diff = ((targetYaw - rec.obj.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+        rec.obj.rotation.y += diff * Math.min(1, dt * 8);
+      } else if (rec.body) {
+        rec.body.velocity.x *= 0.85;
+        rec.body.velocity.z *= 0.85;
+      }
+
+      if (dist < attackRange) {
+        var cool = props.enemyCooldown == null ? 1 : props.enemyCooldown;
+        if (R.time - (rec._lastHitTime || -99) > cool) {
+          rec._lastHitTime = R.time;
+          var dmg = props.enemyDamage == null ? 10 : props.enemyDamage;
+                   R.damagePlayer(dmg, rec);
+          fire('enemyAttack', rec, { damage: dmg, enemy: rec.def.name });
+          if (props.knockback && player.body) {
+            var kb = props.knockback;
+            player.body.velocity.x += (dx / (dist || 1)) * kb;
+            player.body.velocity.z += (dz / (dist || 1)) * kb;
+          }
+        }
+      }
     }
   }
 
@@ -1640,9 +2157,9 @@ function KRuntime(THREE, CANNON, deps, opts) {
   R.bindInput = function (dom, canvas) {
     R.unbindInput();
     var L = R._listeners = [];
-    function add(target, type, fn, opts) {
-      target.addEventListener(type, fn, opts);
-      L.push([target, type, fn, opts]);
+    function add(target, type, fn, opts2) {
+      target.addEventListener(type, fn, opts2);
+      L.push([target, type, fn, opts2]);
     }
 
     var lastMX = 0, lastMY = 0;
@@ -1672,16 +2189,10 @@ function KRuntime(THREE, CANNON, deps, opts) {
       input.mouse.y = -(my / window.innerHeight) * 2 + 1;
     });
 
-    add(dom, 'mousedown', function (e) {
-      if (e.button === 0) input.mouse.down = true;
-    });
+    add(dom, 'mousedown', function (e) { if (e.button === 0) input.mouse.down = true; });
     add(window, 'mouseup', function () { input.mouse.down = false; });
-    add(dom, 'click', function (e) {
-      if (!input.mouse.locked) raycastClick(e);
-    });
-    add(dom, 'contextmenu', function (e) {
-      if (input.mouse.locked) e.preventDefault();
-    });
+    add(dom, 'click', function (e) { if (!input.mouse.locked) raycastClick(e); });
+    add(dom, 'contextmenu', function (e) { if (input.mouse.locked) e.preventDefault(); });
     add(dom, 'touchstart', function (e) {
       for (var i = 0; i < e.changedTouches.length; i++) {
         var t = e.changedTouches[i];
@@ -1690,7 +2201,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
       raycastClick(e.changedTouches[0]);
     }, { passive: true });
     add(dom, 'touchend', function (e) {
-      for (var i = 0; i < e.changedTouches.length; i++) delete input.touch[e.changedTouches[i].identifier];
+      for (var j = 0; j < e.changedTouches.length; j++) delete input.touch[e.changedTouches[j].identifier];
     }, { passive: true });
     add(dom, 'wheel', function (e) {
       input.wheel = (input.wheel || 0) + (e.deltaY > 0 ? 1 : -1);
@@ -1733,6 +2244,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
     get missionState() { return R.missionState; },
     get player() { return R.player; },
     get renderer() { return R.renderer; },
+    get health() { return R.playerHealth; },
     find: function (n) { return R.byName[n] ? R.byName[n].api : null; },
     all: function () { return R.objects.map(function (r) { return r.api; }); },
     spawn: function (def) { return build(def, R.scene).api; },
@@ -1793,6 +2305,41 @@ function KRuntime(THREE, CANNON, deps, opts) {
         R.player.cam.pitch = 0.22;
       }
     },
+    damagePlayer: function (amt) { R.damagePlayer(amt || 10); },
+    healPlayer: function (amt) { R.healPlayer(amt || 10); },
+    setHealth: function (v) { R.setPlayerHealth(v); },
+    getHealth: function () { return R.playerHealth; },
+    getMaxHealth: function () { return R.maxHealth; },
+    setMaxHealth: function (v) { R.maxHealth = v; updateHealthHud(); },
+    respawnPlayer: function () { R.respawnPlayer(); },
+    isPlayerDead: function () { return R.playerDead; },
+    showHealthBar: function (v) {
+      if (!R.settings.player) R.settings.player = {};
+      if (!R.settings.player.healthUI) R.settings.player.healthUI = {};
+      R.settings.player.healthUI.show = !!v;
+      applyHealthHudSettings();
+    },
+    makeEnemy: function (name, opts3) {
+      var r = R.byName[name];
+      if (!r) return null;
+      opts3 = opts3 || {};
+      r.def.props.isEnemy = true;
+      if (opts3.speed != null) r.def.props.enemySpeed = opts3.speed;
+      if (opts3.damage != null) r.def.props.enemyDamage = opts3.damage;
+      if (opts3.range != null) r.def.props.enemyRange = opts3.range;
+      if (opts3.health != null) r.def.props.enemyHealth = opts3.health;
+      registerEnemy(r);
+      return r.api;
+    },
+    listEnemies: function () { return R.enemies.map(function (r) { return r.def.name; }); },
+    setBone: function (objName, boneName, rx, ry, rz) {
+      var r = R.byName[objName];
+      if (r) setBoneRotation(r, boneName, rx, ry, rz);
+    },
+    listBones: function (objName) {
+      var r = R.byName[objName];
+      return r ? listBones(r).map(function (b) { return b.name; }) : [];
+    },
     log: function () { console.log.apply(console, ['[KEngine1]'].concat(Array.prototype.slice.call(arguments))); },
     THREE: THREE,
     input: input
@@ -1803,6 +2350,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
     R.project = project;
     R.uiRoot = uiRoot;
     if (uiRoot) uiRoot.innerHTML = '';
+    R.healthHud = null;
     var s = project.settings || {};
     R.settings = s;
     R.gravity = s.gravity == null ? -9.81 : s.gravity;
@@ -1864,13 +2412,16 @@ function KRuntime(THREE, CANNON, deps, opts) {
 
     var hasLight = defs.some(function (d) { return d.type === 'light'; });
     if (!hasLight) {
-      var dl = new THREE.DirectionalLight(0xffffff, 2.2);
+      var dl = new THREE.DirectionalLight(0xffffff, 2.4);
       dl.position.set(12, 22, 10); dl.castShadow = true;
-      dl.shadow.mapSize.set(2048, 2048);
-      dl.shadow.camera.near = 0.5; dl.shadow.camera.far = 120;
+      var g = s.graphics || {};
+      var mapSize = g.shadowQuality === 'low' ? 1024 : g.shadowQuality === 'ultra' ? 4096 : g.shadowQuality === 'medium' ? 1024 : 2048;
+      dl.shadow.mapSize.set(mapSize, mapSize);
+      dl.shadow.camera.near = 0.5; dl.shadow.camera.far = 160;
       dl.shadow.camera.left = -50; dl.shadow.camera.right = 50;
       dl.shadow.camera.top = 50; dl.shadow.camera.bottom = -50;
-      dl.shadow.bias = -0.0006;
+      dl.shadow.bias = -0.0003;
+      dl.shadow.normalBias = 0.02;
       R.scene.add(dl);
       R.scene.add(new THREE.HemisphereLight(0xbcd8ff, 0x2a3038, 1.1));
     }
@@ -1906,6 +2457,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
     dt = Math.min(dt, 0.05);
     R.time += dt;
     if (R.player) updatePlayer(dt);
+    updateEnemies(dt);
 
     if (R.handlers['tick']) {
       var list = R.handlers['tick'];
@@ -1934,6 +2486,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
     updateCutscene(dt);
     updateNet(dt);
     refreshUI();
+    updateHealthHud();
     input.mouse.dx = 0; input.mouse.dy = 0;
   };
 
@@ -1960,8 +2513,11 @@ function KRuntime(THREE, CANNON, deps, opts) {
     R.unbindInput();
     if (R.net) { try { R.net.destroy(); } catch (e) {} R.net = null; }
     R.objects.slice().forEach(function (rec) { destroyObject(rec); });
-    R.objects = []; R.byId = {}; R.byName = {}; R.handlers = {};
+    R.objects = []; R.byId = {}; R.byName = {}; R.handlers = {}; R.enemies = [];
     if (R.uiRoot) R.uiRoot.innerHTML = '';
+    if (R.dmgFlash && R.dmgFlash.parentNode) R.dmgFlash.parentNode.removeChild(R.dmgFlash);
+    R.dmgFlash = null;
+    R.healthHud = null;
   };
 
   return R;
@@ -2024,7 +2580,8 @@ editorDir.shadow.camera.left = -60;
 editorDir.shadow.camera.right = 60;
 editorDir.shadow.camera.top = 60;
 editorDir.shadow.camera.bottom = -60;
-editorDir.shadow.bias = -0.0006;
+editorDir.shadow.bias = -0.0003;
+editorDir.shadow.normalBias = 0.02;
 editorScene.add(editorDir);
 
 const editorGltf = new GLTFLoader();
@@ -2047,8 +2604,35 @@ const state = {
     bloom: { enabled: false, strength: 0.7, radius: 0.4, threshold: 0.9 },
     player: {
       enabled: false, speed: 6, jump: 7, fly: false,
-      thirdPerson: true, faceCamera: true, height: 1.6,
-      camDist: 5.5, camHeight: 1.6, camSmooth: 0.82
+      thirdPerson: true, faceCamera: true, height: 1.7,
+      camDist: 5.5, camHeight: 1.6, camSmooth: 0.82,
+      maxHealth: 100,
+      fallDamage: true, fallDamageThreshold: 9, fallDamageMultiplier: 4,
+      healthUI: {
+        show: true,
+        position: 'bottom-left',
+        width: 260,
+        height: 26,
+        cornerRadius: 999,
+        opacity: 1,
+        showText: true,
+        textStyle: 'number',
+        showHeart: true,
+        trackColor: 'rgba(0,0,0,.5)',
+        borderColor: 'rgba(255,255,255,.14)',
+        lowColor: '',
+        midColor: '',
+        highColor: ''
+      }
+    },
+    graphics: {
+      shadowQuality: 'high',
+      shadowType: 'pcfsoft',
+      exposure: 1.05,
+      pixelRatioCap: 2,
+      renderScale: 1,
+      envIntensity: 1,
+      toneMapping: 'aces'
     },
     save: { key: '', autoLoad: false },
     autoCutscene: '',
@@ -2121,7 +2705,7 @@ function defaultDef(type) {
     case 'light': d.pos = [4, 8, 4]; d.props = { light: 'point', color: '#ffffff', intensity: 20, distance: 0, shadows: true }; break;
     case 'camera': d.pos = [0, 3, 10]; d.props = { fov: 60, near: 0.1, far: 4000, main: false }; d.name = 'Camera'; break;
     case 'model': d.props = { url: '', autoscale: true, physics: 'none' }; d.name = 'Model'; break;
-    case 'character': d.pos = [0, 0, 0]; d.props = { url: MODEL_SOURCES[0].u, autoscale: true, clip: '', flipModel: false, physics: 'none' }; d.name = 'Character'; break;
+    case 'character': d.pos = [0, 0, 0]; d.props = { url: MODEL_SOURCES[0].u, autoscale: true, clip: '', flipModel: false, physics: 'none', isEnemy: false, enemySpeed: 2.5, enemyDamage: 10, enemyRange: 30, enemyAttackRange: 1.4, enemyCooldown: 1, enemyHealth: 50 }; d.name = 'Character'; break;
     case 'particles': d.pos = [0, 2, 0]; d.props = { count: 400, size: 0.09, spread: 5, speed: 1, color: '#7fd8ff' }; d.name = 'Particles'; break;
     case 'sound': d.props = { synth: 'beep', src: '', volume: 0.6, autoplay: false }; d.name = 'Sound'; break;
     case 'spawn': d.pos = [0, 0.1, 0]; d.props = {}; d.name = 'SpawnPoint'; break;
@@ -2243,13 +2827,17 @@ function buildEditorObject(def, parentObj) {
     else if (kind === 'hemisphere') L = new THREE.HemisphereLight(props.color || '#fff', '#223344', props.intensity == null ? 1 : props.intensity);
     else L = new THREE.PointLight(props.color || '#fff', props.intensity == null ? 12 : props.intensity, props.distance || 0, 2);
     if (L.shadow && props.shadows !== false) {
-      L.castShadow = true; L.shadow.mapSize.set(1024, 1024);
+      L.castShadow = true;
+      var sq = state.settings.graphics.shadowQuality;
+      var mapSize = sq === 'low' ? 512 : sq === 'medium' ? 1024 : sq === 'ultra' ? 4096 : 2048;
+      L.shadow.mapSize.set(mapSize, mapSize);
       if (L.shadow.camera && L.shadow.camera.isOrthographicCamera) {
         L.shadow.camera.left = -40; L.shadow.camera.right = 40;
         L.shadow.camera.top = 40; L.shadow.camera.bottom = -40;
       }
       L.shadow.camera.near = 0.5; L.shadow.camera.far = 140;
-      L.shadow.bias = -0.0006;
+      L.shadow.bias = -0.0003;
+      L.shadow.normalBias = 0.02;
     }
     obj.add(L);
     var giz = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffdd55 }));
@@ -2300,6 +2888,13 @@ function buildEditorObject(def, parentObj) {
     pm.name = '__playerMarker';
     obj.add(pm);
   }
+  if (props.isEnemy) {
+    var em = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12),
+      new THREE.MeshBasicMaterial({ color: 0xff4444, wireframe: true, transparent: true, opacity: 0.85 }));
+    em.userData.helper = true;
+    em.name = '__enemyMarker';
+    obj.add(em);
+  }
 
   (parentObj || editorScene).add(obj);
   return obj;
@@ -2348,6 +2943,9 @@ function loadEditorModel(obj, holder, props, type) {
     holder.add(root);
     obj.userData.loadedModel = root;
     obj.userData.animations = gltf.animations || [];
+    var bones = [];
+    root.traverse(function (n) { if (n.isBone) bones.push(n); });
+    obj.userData.bones = bones;
     if (state.selected === obj) buildInspector(obj);
   }, undefined, function () {
     var ph = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1),
@@ -2372,7 +2970,7 @@ function serializeProject() {
   });
   return {
     engine: 'KEngine1',
-    version: 2,
+    version: 3,
     name: state.projectName,
     updated: Date.now(),
     settings: deepCopy(state.settings),
@@ -2405,6 +3003,14 @@ function applyProject(project) {
   state.projectName = project.name || 'Untitled Game';
   $('#projectName').value = state.projectName;
   state.settings = Object.assign(deepCopy(state.settings), project.settings || {});
+  if (!state.settings.graphics) state.settings.graphics = { shadowQuality: 'high', shadowType: 'pcfsoft', exposure: 1.05, pixelRatioCap: 2, renderScale: 1, envIntensity: 1, toneMapping: 'aces' };
+  if (!state.settings.player.healthUI) state.settings.player.healthUI = {
+    show: true, position: 'bottom-left', width: 260, height: 26, cornerRadius: 999,
+    opacity: 1, showText: true, textStyle: 'number', showHeart: true,
+    trackColor: 'rgba(0,0,0,.5)', borderColor: 'rgba(255,255,255,.14)',
+    lowColor: '', midColor: '', highColor: ''
+  };
+  if (state.settings.player.fallDamage == null) state.settings.player.fallDamage = true;
   state.vars = project.vars ? deepCopy(project.vars) : {};
   state.missions = project.missions ? deepCopy(project.missions) : [];
   state.cutscenes = project.cutscenes ? deepCopy(project.cutscenes) : [];
@@ -2420,6 +3026,7 @@ function applyProject(project) {
       byId[d.id] = buildEditorObject(d, p);
     }
   });
+  applyGraphicsSettings();
   refreshTree();
   refreshUILayer();
   buildWorldPanel();
@@ -2445,6 +3052,7 @@ function refreshTree() {
     li.appendChild(el('span', null, def.name));
     li.appendChild(el('span', 'tag', def.type));
     if (def.props.isPlayer) li.appendChild(el('span', 'player', 'PLAYER'));
+    if (def.props.isEnemy) li.appendChild(el('span', 'enemy', 'ENEMY'));
     var eye = el('span', 'eye', obj.visible ? '\u25C9' : '\u25CB');
     eye.title = 'Toggle visibility';
     eye.onclick = function (e) {
@@ -2731,6 +3339,7 @@ function vecRow(label, arr, onchange) {
   return row;
 }
 let inspectorTransformRows = [];
+let selectedBoneName = null;
 
 function buildInspector(obj) {
   var pane = $('#pane-inspector');
@@ -2760,18 +3369,13 @@ function buildInspector(obj) {
   }));
   pane.appendChild(s1);
 
-  /* Collision button for parts and shapes */
   var collisionTypes = ['part','sphere','cylinder','cone','torus','capsule','wedge','plane'];
   if (collisionTypes.indexOf(def.type) >= 0) {
     var scol = section('Collision');
     var hasCol = props.physics === 'static' || props.physics === 'dynamic';
     scol.appendChild(checkField('Has Collision (blocks the player)', hasCol, function (v) {
       pushUndo();
-      if (v) {
-        props.physics = 'static';
-      } else {
-        props.physics = 'none';
-      }
+      props.physics = v ? 'static' : 'none';
       refreshTree();
       buildInspector(obj);
     }));
@@ -2808,8 +3412,125 @@ function buildInspector(obj) {
     buildWorldPanel();
     updateStatusBar();
   }));
-  sp.appendChild(el('p', 'hint', 'Only one object can be the player.'));
+  sp.appendChild(el('p', 'hint', 'Only one object can be the player. Humanoid collider is auto-sized using the Player Controller height setting.'));
   pane.appendChild(sp);
+
+  var isCharacterLike = def.type === 'character' || def.type === 'model' || collisionTypes.indexOf(def.type) >= 0;
+  if (isCharacterLike) {
+    var sen = section('Enemy AI');
+    sen.appendChild(checkField('Make this an Enemy AI', !!props.isEnemy, function (v) {
+      pushUndo();
+      props.isEnemy = !!v;
+      if (v) {
+        if (props.physics === 'none' || !props.physics) props.physics = 'dynamic';
+        if (props.enemySpeed == null) props.enemySpeed = 2.5;
+        if (props.enemyDamage == null) props.enemyDamage = 10;
+        if (props.enemyDetectRange == null) props.enemyDetectRange = 30;
+        if (props.enemyAttackRange == null) props.enemyAttackRange = 1.4;
+        if (props.enemyCooldown == null) props.enemyCooldown = 1;
+        if (props.mass == null) props.mass = 5;
+      }
+      var old = obj.getObjectByName('__enemyMarker');
+      if (old) obj.remove(old);
+      if (v) {
+        var em = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 12),
+          new THREE.MeshBasicMaterial({ color: 0xff4444, wireframe: true, transparent: true, opacity: 0.85 }));
+        em.userData.helper = true;
+        em.name = '__enemyMarker';
+        obj.add(em);
+      }
+      refreshTree();
+      buildInspector(obj);
+    }));
+    sen.appendChild(el('p', 'hint', 'Enemy AI chases the player and damages them on contact. Requires dynamic physics.'));
+    if (props.isEnemy) {
+      sen.appendChild(field('Move speed', props.enemySpeed == null ? 2.5 : props.enemySpeed, function (v) { props.enemySpeed = v; }, 'number'));
+      sen.appendChild(field('Damage per hit', props.enemyDamage == null ? 10 : props.enemyDamage, function (v) { props.enemyDamage = v; }, 'number'));
+      sen.appendChild(field('Detect range', props.enemyDetectRange == null ? 30 : props.enemyDetectRange, function (v) { props.enemyDetectRange = v; }, 'number'));
+      sen.appendChild(field('Attack range', props.enemyAttackRange == null ? 1.4 : props.enemyAttackRange, function (v) { props.enemyAttackRange = v; }, 'number'));
+      sen.appendChild(field('Attack cooldown (s)', props.enemyCooldown == null ? 1 : props.enemyCooldown, function (v) { props.enemyCooldown = v; }, 'number'));
+      sen.appendChild(field('Knockback force', props.knockback || 0, function (v) { props.knockback = v; }, 'number'));
+      sen.appendChild(field('Mass (physics)', props.mass == null ? 5 : props.mass, function (v) { props.mass = v; }, 'number'));
+      sen.appendChild(checkField('Growl sound on hit', props.growl !== false, function (v) { props.growl = v; }));
+    }
+    pane.appendChild(sen);
+  }
+
+  if (def.type === 'character' || def.type === 'model') {
+    var bones = obj.userData.bones || [];
+    if (bones.length) {
+      var sbr = section('Humanoid Rig - Bones (' + bones.length + ')');
+      sbr.appendChild(el('p', 'hint', 'Click a bone to pose it. Rotate sliders to bend the rig live. Save Pose stores it in the project so it applies at runtime.'));
+      var bcont = el('div');
+      bcont.style.maxHeight = '180px';
+      bcont.style.overflow = 'auto';
+      bcont.style.border = '1px solid var(--line2)';
+      bcont.style.borderRadius = '2px';
+      bcont.style.padding = '3px';
+      bcont.style.background = '#252525';
+
+      bones.forEach(function (bone) {
+        var br = el('div', 'bone-row');
+        if (selectedBoneName === bone.name) br.classList.add('sel');
+        br.appendChild(el('span', 'nm', bone.name));
+        br.onclick = function () { selectedBoneName = bone.name; buildInspector(obj); };
+        bcont.appendChild(br);
+      });
+      sbr.appendChild(bcont);
+
+      var selectedBone = bones.filter(function (b) { return b.name === selectedBoneName; })[0];
+      if (!selectedBone) { selectedBone = bones[0]; selectedBoneName = selectedBone.name; }
+
+      sbr.appendChild(el('p', 'hint', 'Selected: ' + selectedBone.name));
+      function boneSlider(axis, idx) {
+        var row = el('div', 'bone-slider');
+        row.appendChild(el('label', null, axis));
+        var sl = el('input');
+        sl.type = 'range';
+        sl.min = '-3.2'; sl.max = '3.2'; sl.step = '0.01';
+        var cur = [selectedBone.rotation.x, selectedBone.rotation.y, selectedBone.rotation.z][idx];
+        sl.value = String(cur);
+        var numIn = el('input');
+        numIn.type = 'number'; numIn.step = '0.01';
+        numIn.value = cur.toFixed(3);
+        function apply(v) {
+          selectedBone.rotation[axis === 'X' ? 'x' : axis === 'Y' ? 'y' : 'z'] = parseFloat(v);
+        }
+        sl.oninput = function () { apply(sl.value); numIn.value = parseFloat(sl.value).toFixed(3); };
+        numIn.oninput = function () { apply(numIn.value); sl.value = numIn.value; };
+        row.appendChild(sl);
+        row.appendChild(numIn);
+        return row;
+      }
+      sbr.appendChild(boneSlider('X', 0));
+      sbr.appendChild(boneSlider('Y', 1));
+      sbr.appendChild(boneSlider('Z', 2));
+
+      var btnRow = el('div', 'row');
+      var savePoseBtn = el('button', 'good', 'Save Pose');
+      savePoseBtn.onclick = function () {
+        pushUndo();
+        props.bonePose = props.bonePose || {};
+        bones.forEach(function (b) {
+          if (Math.abs(b.rotation.x) > 0.0001 || Math.abs(b.rotation.y) > 0.0001 || Math.abs(b.rotation.z) > 0.0001 ||
+              b.scale.x !== 1 || b.scale.y !== 1 || b.scale.z !== 1) {
+            props.bonePose[b.name] = { r: [b.rotation.x, b.rotation.y, b.rotation.z], s: [b.scale.x, b.scale.y, b.scale.z] };
+          }
+        });
+        setStatus('Bone pose saved (' + Object.keys(props.bonePose).length + ' bones)');
+      };
+      var clearPoseBtn = el('button', 'bad', 'Clear Pose');
+      clearPoseBtn.onclick = function () {
+        pushUndo();
+        props.bonePose = null;
+        bones.forEach(function (b) { b.rotation.set(0, 0, 0); b.scale.set(1, 1, 1); });
+        buildInspector(obj);
+      };
+      btnRow.appendChild(savePoseBtn); btnRow.appendChild(clearPoseBtn);
+      sbr.appendChild(btnRow);
+      pane.appendChild(sbr);
+    }
+  }
 
   if (def.type.indexOf('ui') === 0) {
     var sui = section('UI Element');
@@ -2839,30 +3560,21 @@ function buildInspector(obj) {
       st.appendChild(field('Font size', props.fontSize == null ? defaultSize : props.fontSize, function (v) { props.fontSize = v; refreshUILayer(); }, 'number'));
 
       st.appendChild(selectField('Font weight', props.fontWeight || (def.type === 'uibutton' ? '600' : 'normal'), [
-        { label: 'Normal', value: 'normal' },
-        { label: 'Bold', value: 'bold' },
-        { label: '100 Thin', value: '100' },
-        { label: '200 Extra Light', value: '200' },
-        { label: '300 Light', value: '300' },
-        { label: '400 Regular', value: '400' },
-        { label: '500 Medium', value: '500' },
-        { label: '600 Semi Bold', value: '600' },
-        { label: '700 Bold', value: '700' },
-        { label: '800 Extra Bold', value: '800' },
+        { label: 'Normal', value: 'normal' }, { label: 'Bold', value: 'bold' },
+        { label: '100 Thin', value: '100' }, { label: '200 Extra Light', value: '200' },
+        { label: '300 Light', value: '300' }, { label: '400 Regular', value: '400' },
+        { label: '500 Medium', value: '500' }, { label: '600 Semi Bold', value: '600' },
+        { label: '700 Bold', value: '700' }, { label: '800 Extra Bold', value: '800' },
         { label: '900 Black', value: '900' }
       ], function (v) { props.fontWeight = v; refreshUILayer(); }));
 
       st.appendChild(selectField('Font style', props.fontStyle || 'normal', [
-        { label: 'Normal', value: 'normal' },
-        { label: 'Italic', value: 'italic' },
-        { label: 'Oblique', value: 'oblique' }
+        { label: 'Normal', value: 'normal' }, { label: 'Italic', value: 'italic' }, { label: 'Oblique', value: 'oblique' }
       ], function (v) { props.fontStyle = v; refreshUILayer(); }));
 
       st.appendChild(selectField('Text align', props.textAlign || 'left', [
-        { label: 'Left', value: 'left' },
-        { label: 'Center', value: 'center' },
-        { label: 'Right', value: 'right' },
-        { label: 'Justify', value: 'justify' }
+        { label: 'Left', value: 'left' }, { label: 'Center', value: 'center' },
+        { label: 'Right', value: 'right' }, { label: 'Justify', value: 'justify' }
       ], function (v) { props.textAlign = v; refreshUILayer(); }));
 
       st.appendChild(field('Letter spacing (px)', props.letterSpacing == null ? 0 : props.letterSpacing, function (v) { props.letterSpacing = v; refreshUILayer(); }, 'number'));
@@ -2882,10 +3594,8 @@ function buildInspector(obj) {
       var si = section('Image');
       si.appendChild(field('Image URL', props.src || '', function (v) { props.src = v; refreshUILayer(); }));
       si.appendChild(selectField('Fit', props.fit || 'contain', [
-        { label: 'Contain', value: 'contain' },
-        { label: 'Cover', value: 'cover' },
-        { label: 'Stretch', value: '100% 100%' },
-        { label: 'Repeat', value: 'repeat' }
+        { label: 'Contain', value: 'contain' }, { label: 'Cover', value: 'cover' },
+        { label: 'Stretch', value: '100% 100%' }, { label: 'Repeat', value: 'repeat' }
       ], function (v) { props.fit = v; refreshUILayer(); }));
       si.appendChild(field('Background', props.bg || 'transparent', function (v) { props.bg = v; refreshUILayer(); }));
       pane.appendChild(si);
@@ -2902,11 +3612,8 @@ function buildInspector(obj) {
       sf.appendChild(field('Border color', props.color || '#3ea6ff', function (v) { props.color = v; refreshUILayer(); }, 'color'));
       sf.appendChild(field('Border width', props.borderWidth == null ? 2 : props.borderWidth, function (v) { props.borderWidth = v; refreshUILayer(); }, 'number'));
       sf.appendChild(selectField('Border style', props.borderStyle || 'solid', [
-        { label: 'Solid', value: 'solid' },
-        { label: 'Dashed', value: 'dashed' },
-        { label: 'Dotted', value: 'dotted' },
-        { label: 'Double', value: 'double' },
-        { label: 'None', value: 'none' }
+        { label: 'Solid', value: 'solid' }, { label: 'Dashed', value: 'dashed' },
+        { label: 'Dotted', value: 'dotted' }, { label: 'Double', value: 'double' }, { label: 'None', value: 'none' }
       ], function (v) { props.borderStyle = v; refreshUILayer(); }));
       sf.appendChild(field('Background', props.bg || 'rgba(10,20,30,.55)', function (v) { props.bg = v; refreshUILayer(); }));
       pane.appendChild(sf);
@@ -2944,12 +3651,9 @@ function buildInspector(obj) {
     var s3 = section('Material');
     s3.appendChild(field('Color', props.color || '#9aa4b2', function (v) { props.color = v; applyMaterial(obj, props); }, 'color'));
     s3.appendChild(selectField('Shader', props.material || 'standard', [
-      { label: 'Standard (PBR)', value: 'standard' },
-      { label: 'Phong (shiny)', value: 'phong' },
-      { label: 'Glass (transmission)', value: 'glass' },
-      { label: 'Neon (emissive)', value: 'neon' },
-      { label: 'Unlit Basic', value: 'basic' },
-      { label: 'Wireframe', value: 'wireframe' }
+      { label: 'Standard (PBR)', value: 'standard' }, { label: 'Phong (shiny)', value: 'phong' },
+      { label: 'Glass (transmission)', value: 'glass' }, { label: 'Neon (emissive)', value: 'neon' },
+      { label: 'Unlit Basic', value: 'basic' }, { label: 'Wireframe', value: 'wireframe' }
     ], function (v) { props.material = v; applyMaterial(obj, props); buildInspector(obj); }));
     s3.appendChild(field('Metalness', props.metalness == null ? 0.1 : props.metalness, function (v) { props.metalness = v; applyMaterial(obj, props); }, 'number'));
     s3.appendChild(field('Roughness', props.roughness == null ? 0.6 : props.roughness, function (v) { props.roughness = v; applyMaterial(obj, props); }, 'number'));
@@ -2965,8 +3669,7 @@ function buildInspector(obj) {
     var sl = section('Light');
     sl.appendChild(selectField('Kind', props.light || 'point', [
       { label: 'Point', value: 'point' }, { label: 'Directional (sun)', value: 'directional' },
-      { label: 'Spot', value: 'spot' }, { label: 'Ambient', value: 'ambient' },
-      { label: 'Hemisphere', value: 'hemisphere' }
+      { label: 'Spot', value: 'spot' }, { label: 'Ambient', value: 'ambient' }, { label: 'Hemisphere', value: 'hemisphere' }
     ], function (v) { props.light = v; rebuildObject(obj); }));
     sl.appendChild(field('Color', props.color || '#ffffff', function (v) { props.color = v; rebuildObject(obj); }, 'color'));
     sl.appendChild(field('Intensity', props.intensity == null ? 20 : props.intensity, function (v) { props.intensity = v; rebuildObject(obj); }, 'number'));
@@ -3001,7 +3704,7 @@ function buildInspector(obj) {
     sm.appendChild(field('URL (.glb / .gltf)', props.url || '', function (v) { props.url = v; rebuildObject(obj); }));
     sm.appendChild(checkField('Auto scale to 2 units', props.autoscale !== false, function (v) { props.autoscale = v; rebuildObject(obj); }));
     if (def.type === 'character') {
-      sm.appendChild(checkField('Flip model 180° (turn to face away from camera)', !!props.flipModel, function (v) { props.flipModel = v; rebuildObject(obj); }));
+      sm.appendChild(checkField('Flip model 180\u00B0 (turn to face away from camera)', !!props.flipModel, function (v) { props.flipModel = v; rebuildObject(obj); }));
       sm.appendChild(el('p', 'hint', 'Turn this ON if the character is facing the camera in third-person view. Turn OFF if the character walks backwards.'));
     }
     var anims = obj.userData.animations || [];
@@ -3267,7 +3970,8 @@ function buildToolbox() {
     { t: 'Shapes', items: ['part', 'sphere', 'cylinder', 'cone', 'torus', 'capsule', 'wedge', 'plane'] },
     { t: 'Scene', items: ['light', 'camera', 'spawn', 'group'] },
     { t: 'Effects', items: ['particles', 'sound', 'text'] },
-    { t: 'UI', items: ['uitext', 'uiimage', 'uibutton', 'uiframe'] }
+    { t: 'UI', items: ['uitext', 'uiimage', 'uibutton', 'uiframe'] },
+    { t: 'Characters', items: ['character', 'model'] }
   ];
   groups.forEach(function (g) {
     pri.appendChild(el('p', 'hint', g.t));
@@ -3311,10 +4015,20 @@ const EVENTS = [
   { v: 'collide', l: 'When it collides' },
   { v: 'varChange', l: 'When variable changes' },
   { v: 'missionComplete', l: 'When mission completes' },
-  { v: 'network', l: 'When network message arrives' }
+  { v: 'network', l: 'When network message arrives' },
+  { v: 'playerDamaged', l: 'When player takes damage' },
+  { v: 'playerDied', l: 'When player dies' },
+  { v: 'playerHealed', l: 'When player is healed' }
 ];
 
 const ACTIONS = [
+  { v: 'makeEnemyAI', l: 'Make it Enemy AI (chase + damage)' },
+  { v: 'disableEnemy', l: 'Disable Enemy AI' },
+  { v: 'damagePlayer', l: 'Damage player' },
+  { v: 'healPlayer', l: 'Heal player' },
+  { v: 'setHealth', l: 'Set player health' },
+  { v: 'setMaxHealth', l: 'Set max health' },
+  { v: 'respawnPlayer', l: 'Respawn player' },
   { v: 'moveBy', l: 'Move by (x,y,z)' },
   { v: 'setPos', l: 'Set position (x,y,z)' },
   { v: 'rotateBy', l: 'Rotate by (x,y,z)' },
@@ -3324,6 +4038,7 @@ const ACTIONS = [
   { v: 'setText', l: 'Set UI text' },
   { v: 'playSound', l: 'Play sound' },
   { v: 'playAnim', l: 'Play animation clip' },
+  { v: 'setBone', l: 'Rotate a rig bone' },
   { v: 'spawn', l: 'Spawn a copy of this' },
   { v: 'clone', l: 'Clone this' },
   { v: 'destroy', l: 'Destroy target' },
@@ -3400,6 +4115,23 @@ function buildLogicPanel() {
       box.appendChild(field('X', a.x == null ? 0 : a.x, function (v) { a.x = v; }, 'number'));
       box.appendChild(field('Y', a.y == null ? 0 : a.y, function (v) { a.y = v; }, 'number'));
       box.appendChild(field('Z', a.z == null ? 0 : a.z, function (v) { a.z = v; }, 'number'));
+    }
+    if (rule.do === 'makeEnemyAI') {
+      box.appendChild(el('p', 'hint', 'Marks this object as an enemy that chases the player and deals damage on contact.'));
+      box.appendChild(field('Speed', a.speed == null ? 2.5 : a.speed, function (v) { a.speed = v; }, 'number'));
+      box.appendChild(field('Damage', a.damage == null ? 10 : a.damage, function (v) { a.damage = v; }, 'number'));
+      box.appendChild(field('Detect range', a.range == null ? 30 : a.range, function (v) { a.range = v; }, 'number'));
+      box.appendChild(field('Attack range', a.attack == null ? 1.4 : a.attack, function (v) { a.attack = v; }, 'number'));
+    }
+    if (['damagePlayer', 'healPlayer', 'setHealth', 'setMaxHealth'].indexOf(rule.do) >= 0) {
+      box.appendChild(field('Amount', a.value == null ? (rule.do === 'setHealth' || rule.do === 'setMaxHealth' ? 100 : 10) : a.value, function (v) { a.value = v; }, 'number'));
+    }
+    if (rule.do === 'setBone') {
+      box.appendChild(field('Bone name', a.bone || '', function (v) { a.bone = v; }));
+      box.appendChild(field('Rotate X', a.rx == null ? 0 : a.rx, function (v) { a.rx = v; }, 'number'));
+      box.appendChild(field('Rotate Y', a.ry == null ? 0 : a.ry, function (v) { a.ry = v; }, 'number'));
+      box.appendChild(field('Rotate Z', a.rz == null ? 0 : a.rz, function (v) { a.rz = v; }, 'number'));
+      box.appendChild(el('p', 'hint', 'Bone names come from the rigged model. e.g. "mixamorigSpine", "mixamorigLeftArm".'));
     }
     if (['setColor', 'setText', 'playSound', 'playAnim', 'openURL', 'emit', 'sendNet', 'playCutscene', 'setVisible', 'completeMission'].indexOf(rule.do) >= 0) {
       var label = 'Value';
@@ -3564,6 +4296,14 @@ function ruleToCode(def, r, self) {
     case 'setText': return self + '.setText("' + n('value', '') + '");';
     case 'playSound': return 'K.sound({ synth: "' + n('value', 'beep') + '", volume: ' + n('volume', 0.6) + ' });';
     case 'playAnim': return self + '.playAnimation("' + n('value', '') + '");';
+    case 'makeEnemyAI': return self + '.makeEnemy({ speed: ' + n('speed', 2.5) + ', damage: ' + n('damage', 10) + ', range: ' + n('attack', 1.4) + ' });';
+    case 'disableEnemy': return self + '.setEnemy(false);';
+    case 'damagePlayer': return 'K.damagePlayer(' + n('value', 10) + ');';
+    case 'healPlayer': return 'K.healPlayer(' + n('value', 10) + ');';
+    case 'setHealth': return 'K.setHealth(' + n('value', 100) + ');';
+    case 'setMaxHealth': return 'K.setMaxHealth(' + n('value', 100) + ');';
+    case 'respawnPlayer': return 'K.respawnPlayer();';
+    case 'setBone': return 'me.setBone("' + n('bone', '') + '", ' + n('rx', 0) + ', ' + n('ry', 0) + ', ' + n('rz', 0) + ');';
     case 'spawn': return 'K.spawn(JSON.parse(JSON.stringify(' + self + '.def)));';
     case 'clone': return self + '.clone();';
     case 'destroy': return 'K.destroy(' + tgt + ');';
@@ -3634,10 +4374,14 @@ function buildCodePanel() {
     'me.fadeIn(300)              me.fadeOut(300)',
     'me.playAnimation("clip")    me.stopAnimations()',
     'me.clone()                  me.destroy()',
-    'me.lookAt(target)           me.getVar(name)/setVar(name,val)',
+    'me.lookAt(target)           me.getVar/setVar',
     'me.on(event, fn)            me.sendNet(data)',
     'me.completeMission(name)    me.isMissionComplete(name)',
-    'me.saveGame()               me.loadGame()',
+    'me.makeEnemy({speed,damage,range,health})',
+    'me.setEnemy(true/false)     me.damagePlayer(20)',
+    'me.healPlayer(10)           me.getHealth()',
+    'me.setBone("boneName", rx, ry, rz)',
+    'me.listBones()              me.getBone("name")',
     '',
     'K.on(event, fn)             K.find("ObjectName")',
     'K.spawn(def)                K.spawnType("part","Name",[0,1,0])',
@@ -3646,17 +4390,21 @@ function buildCodePanel() {
     'K.synth("beep", 0.5)        K.sendNet(data)',
     'K.fadeIn("UIText", 300)     K.fadeOut("UIText", 300)',
     'K.completeMission(name)     K.isMissionComplete(name)',
+    'K.damagePlayer(20)          K.healPlayer(20)',
+    'K.setHealth(50)             K.getHealth()',
+    'K.setMaxHealth(150)         K.respawnPlayer()',
+    'K.makeEnemy("EnemyName", {speed, damage, range})',
+    'K.listEnemies()             K.listBones("ObjectName")',
+    'K.setBone("Obj","bone", rx, ry, rz)',
+    'K.showHealthBar(true)       K.isPlayerDead()',
     'K.saveGame()                K.loadGame()',
-    'K.hasSave()                 K.deleteSave()',
-    'K.resetMissions()           K.missionProgress()',
     'K.setPlayer("ObjectName")   K.missionState',
     'K.setThirdPerson(true)      K.isThirdPerson()',
-    'K.setCameraDistance(6)      K.resetCamera()',
-    'K.setFaceCamera(true)       K.setCameraYaw(1.57)',
     'K.input.keys["KeyW"]        K.log("message")',
     '',
     'Events: start, tick, click, touch, key, collide,',
-    '        varChange, missionComplete, network, cameraMode'
+    '        varChange, missionComplete, network, cameraMode,',
+    '        playerDamaged, playerDied, playerHealed, enemyAttack'
   ].join('\n');
   s3.appendChild(api);
   pane.appendChild(s3);
@@ -3804,10 +4552,106 @@ function buildWorldPanel() {
   s4.appendChild(field('Smoothness (0.5 - 0.98)', s.player.camSmooth == null ? 0.82 : s.player.camSmooth, function (v) { s.player.camSmooth = v; if (state.runtime && state.runtime.player) state.runtime.player.cam.smooth = v; }, 'number'));
   s4.appendChild(el('p', 'hint', 'Higher = lazier camera. Lower = snappier.'));
 
+  s4.appendChild(el('p', 'hint', 'Health & Damage'));
+  s4.appendChild(field('Max health', s.player.maxHealth == null ? 100 : s.player.maxHealth, function (v) { s.player.maxHealth = v; }, 'number'));
+  s4.appendChild(checkField('Enable fall damage', s.player.fallDamage !== false, function (v) { s.player.fallDamage = v; }));
+  s4.appendChild(field('Fall damage threshold (m/s)', s.player.fallDamageThreshold == null ? 9 : s.player.fallDamageThreshold, function (v) { s.player.fallDamageThreshold = v; }, 'number'));
+  s4.appendChild(field('Fall damage multiplier', s.player.fallDamageMultiplier == null ? 4 : s.player.fallDamageMultiplier, function (v) { s.player.fallDamageMultiplier = v; }, 'number'));
+  s4.appendChild(el('p', 'hint', 'Landing faster than the threshold takes (speed - threshold) * multiplier damage.'));
+
   var playerObj = allObjectDefs().filter(function (d) { return d.props.isPlayer; })[0];
   s4.appendChild(el('p', 'hint', playerObj ? 'Player object: ' + playerObj.name : 'No player object yet. Select one in the Inspector.'));
   s4.appendChild(el('p', 'hint', 'Play controls: WASD move, Space jump, Shift run, C toggle 1st/3rd, Q reset camera, wheel zoom, Esc unlock.'));
   pane.appendChild(s4);
+
+  var hcfg = s.player.healthUI || (s.player.healthUI = {
+    show: true, position: 'bottom-left', width: 260, height: 26, cornerRadius: 999,
+    opacity: 1, showText: true, textStyle: 'number', showHeart: true,
+    trackColor: 'rgba(0,0,0,.5)', borderColor: 'rgba(255,255,255,.14)',
+    lowColor: '', midColor: '', highColor: ''
+  });
+
+  function pushHealthUIChange() {
+    if (state.runtime && state.runtime.settings && state.runtime.settings.player) {
+      state.runtime.settings.player.healthUI = hcfg;
+      if (state.runtime.applyHealthHudSettings) state.runtime.applyHealthHudSettings();
+      if (state.runtime.updateHealthHud) state.runtime.updateHealthHud();
+    }
+  }
+
+  var sH = section('Health UI');
+  sH.appendChild(el('p', 'hint', 'Customize the on-screen health bar. Changes apply live during Play mode.'));
+
+  sH.appendChild(checkField('Show health bar', hcfg.show !== false, function (v) { hcfg.show = v; pushHealthUIChange(); }));
+  sH.appendChild(selectField('Position', hcfg.position || 'bottom-left', [
+    { label: 'Bottom-left',   value: 'bottom-left' },
+    { label: 'Bottom-center', value: 'bottom-center' },
+    { label: 'Bottom-right',  value: 'bottom-right' },
+    { label: 'Top-left',      value: 'top-left' },
+    { label: 'Top-center',    value: 'top-center' },
+    { label: 'Top-right',     value: 'top-right' }
+  ], function (v) { hcfg.position = v; pushHealthUIChange(); }));
+
+  sH.appendChild(field('Width (px)',  hcfg.width  == null ? 260 : hcfg.width,  function (v) { hcfg.width  = v; pushHealthUIChange(); }, 'number'));
+  sH.appendChild(field('Height (px)', hcfg.height == null ? 26  : hcfg.height, function (v) { hcfg.height = v; pushHealthUIChange(); }, 'number'));
+  sH.appendChild(field('Corner radius (999 = pill)', hcfg.cornerRadius == null ? 999 : hcfg.cornerRadius, function (v) { hcfg.cornerRadius = v; pushHealthUIChange(); }, 'number'));
+  sH.appendChild(field('Opacity (0-1)', hcfg.opacity == null ? 1 : hcfg.opacity, function (v) { hcfg.opacity = v; pushHealthUIChange(); }, 'number'));
+
+  sH.appendChild(checkField('Show heart icon', hcfg.showHeart !== false, function (v) { hcfg.showHeart = v; pushHealthUIChange(); }));
+  sH.appendChild(checkField('Show text', hcfg.showText !== false, function (v) { hcfg.showText = v; pushHealthUIChange(); }));
+  sH.appendChild(selectField('Text style', hcfg.textStyle || 'number', [
+    { label: 'Number only  (100)',      value: 'number' },
+    { label: 'Percent      (75%)',      value: 'percent' },
+    { label: 'Fraction     (75 / 100)', value: 'fraction' },
+    { label: 'None',                    value: 'none' }
+  ], function (v) { hcfg.textStyle = v; pushHealthUIChange(); }));
+
+  sH.appendChild(field('Track color',  hcfg.trackColor  || 'rgba(0,0,0,.5)',             function (v) { hcfg.trackColor  = v; pushHealthUIChange(); }));
+  sH.appendChild(field('Border color', hcfg.borderColor || 'rgba(255,255,255,.14)',      function (v) { hcfg.borderColor = v; pushHealthUIChange(); }));
+
+  sH.appendChild(el('p', 'hint', 'Optional color overrides by health tier. Leave empty to use defaults (green / orange / red).'));
+  sH.appendChild(field('High HP color (>60%)',  hcfg.highColor || '', function (v) { hcfg.highColor = v; pushHealthUIChange(); }));
+  sH.appendChild(field('Mid HP color (26-60%)', hcfg.midColor  || '', function (v) { hcfg.midColor  = v; pushHealthUIChange(); }));
+  sH.appendChild(field('Low HP color (\u226425%)',      hcfg.lowColor  || '', function (v) { hcfg.lowColor  = v; pushHealthUIChange(); }));
+
+  var presetRow = el('div', 'row');
+  function healthPreset(name, vals) {
+    var b = el('button', null, name);
+    b.onclick = function () {
+      Object.assign(hcfg, vals);
+      pushHealthUIChange();
+      buildWorldPanel();
+      setStatus('Health UI preset: ' + name);
+    };
+    return b;
+  }
+  presetRow.appendChild(healthPreset('Classic', {
+    show: true, position: 'bottom-left', width: 260, height: 26, cornerRadius: 999, opacity: 1,
+    showText: true, textStyle: 'number', showHeart: true,
+    trackColor: 'rgba(0,0,0,.5)', borderColor: 'rgba(255,255,255,.14)',
+    lowColor: '', midColor: '', highColor: ''
+  }));
+  presetRow.appendChild(healthPreset('Minimal', {
+    show: true, position: 'top-left', width: 200, height: 12, cornerRadius: 999, opacity: .9,
+    showText: false, textStyle: 'none', showHeart: false,
+    trackColor: 'rgba(0,0,0,.55)', borderColor: 'rgba(255,255,255,.08)',
+    lowColor: '', midColor: '', highColor: ''
+  }));
+  presetRow.appendChild(healthPreset('Framed', {
+    show: true, position: 'bottom-center', width: 320, height: 30, cornerRadius: 6, opacity: 1,
+    showText: true, textStyle: 'fraction', showHeart: true,
+    trackColor: 'rgba(0,0,0,.65)', borderColor: 'rgba(255,200,100,.55)',
+    lowColor: 'linear-gradient(180deg,#ff7d7d,#e33a3a)', midColor: 'linear-gradient(180deg,#ffd07a,#f0a030)', highColor: 'linear-gradient(180deg,#6cf0a8,#3ddc84)'
+  }));
+  presetRow.appendChild(healthPreset('Cyber', {
+    show: true, position: 'bottom-right', width: 280, height: 22, cornerRadius: 3, opacity: 1,
+    showText: true, textStyle: 'percent', showHeart: false,
+    trackColor: 'rgba(10,20,30,.7)', borderColor: 'rgba(0,229,255,.55)',
+    lowColor: 'linear-gradient(180deg,#ff4488,#a8123a)', midColor: 'linear-gradient(180deg,#ffd966,#c9960a)', highColor: 'linear-gradient(180deg,#5bf0ff,#0aa5c9)'
+  }));
+  sH.appendChild(presetRow);
+  sH.appendChild(el('p', 'hint', 'Tip: color fields accept any CSS color or gradient, e.g. "#3ddc84" or "linear-gradient(180deg,#6cf0a8,#3ddc84)".'));
+  pane.appendChild(sH);
 
   var s5 = section('Save System (localStorage)');
   s5.appendChild(field('Save slot key', s.save.key || '(project name)', function (v) { s.save.key = v; }));
@@ -3821,8 +4665,8 @@ function buildWorldPanel() {
   s5.appendChild(el('p', 'hint', 'Missions and variables are stored here. Works in the exported game automatically.'));
   pane.appendChild(s5);
 
-  var s6 = section('Rendering');
-  s6.appendChild(checkField('Bloom post processing', s.bloom.enabled, function (v) { s.bloom.enabled = v; }));
+  var s6 = section('Bloom Post Processing');
+  s6.appendChild(checkField('Enable bloom', s.bloom.enabled, function (v) { s.bloom.enabled = v; }));
   s6.appendChild(field('Bloom strength', s.bloom.strength, function (v) { s.bloom.strength = v; }, 'number'));
   s6.appendChild(field('Bloom radius', s.bloom.radius, function (v) { s.bloom.radius = v; }, 'number'));
   s6.appendChild(field('Bloom threshold', s.bloom.threshold, function (v) { s.bloom.threshold = v; }, 'number'));
@@ -3888,6 +4732,95 @@ function buildWorldPanel() {
   pane.appendChild(s8);
 
   bindSectionCollapse(pane);
+}
+
+function buildGraphicsPanel() {
+  var pane = $('#pane-graphics');
+  pane.innerHTML = '';
+  var g = state.settings.graphics;
+
+  var s1 = section('Shadows');
+  s1.appendChild(selectField('Shadow quality', g.shadowQuality, [
+    { label: 'Low (512)', value: 'low' },
+    { label: 'Medium (1024)', value: 'medium' },
+    { label: 'High (2048)', value: 'high' },
+    { label: 'Ultra (4096)', value: 'ultra' }
+  ], function (v) { g.shadowQuality = v; applyGraphicsSettings(); }));
+  s1.appendChild(selectField('Shadow filter', g.shadowType, [
+    { label: 'Basic (fast, hard edges)', value: 'basic' },
+    { label: 'PCF (soft)', value: 'pcf' },
+    { label: 'PCF Soft (smoothest)', value: 'pcfsoft' }
+  ], function (v) { g.shadowType = v; applyGraphicsSettings(); }));
+  s1.appendChild(el('p', 'hint', 'Higher quality = more memory, better-looking shadows. Changes live in the editor and apply to the exported game.'));
+  pane.appendChild(s1);
+
+  var s2 = section('Renderer');
+  s2.appendChild(selectField('Tone mapping', g.toneMapping, [
+    { label: 'ACES Filmic (default)', value: 'aces' },
+    { label: 'Cineon', value: 'cineon' },
+    { label: 'Reinhard', value: 'reinhard' },
+    { label: 'Linear', value: 'linear' },
+    { label: 'None', value: 'none' }
+  ], function (v) { g.toneMapping = v; applyGraphicsSettings(); }));
+  s2.appendChild(field('Exposure', g.exposure, function (v) { g.exposure = v; applyGraphicsSettings(); }, 'number'));
+  s2.appendChild(field('Pixel ratio cap', g.pixelRatioCap, function (v) { g.pixelRatioCap = v; applyGraphicsSettings(); }, 'number'));
+  s2.appendChild(field('Render scale (0.5 - 2)', g.renderScale, function (v) { g.renderScale = v; applyGraphicsSettings(); }, 'number'));
+  s2.appendChild(el('p', 'hint', 'Render scale < 1 renders at lower resolution for performance. 1 = native. > 1 = supersample (slower but sharper).'));
+  pane.appendChild(s2);
+
+  var s3 = section('Environment');
+  s3.appendChild(field('Environment intensity', g.envIntensity, function (v) { g.envIntensity = v; applyGraphicsSettings(); }, 'number'));
+  s3.appendChild(el('p', 'hint', 'How strongly the HDR environment lights PBR materials.'));
+  pane.appendChild(s3);
+
+  var s4 = section('Presets');
+  var row = el('div', 'row');
+  function preset(name, vals) {
+    var b = el('button', null, name);
+    b.onclick = function () {
+      Object.assign(g, vals);
+      applyGraphicsSettings();
+      buildGraphicsPanel();
+      setStatus('Preset applied: ' + name);
+    };
+    return b;
+  }
+  row.appendChild(preset('Low', { shadowQuality: 'low', shadowType: 'basic', exposure: 1.0, pixelRatioCap: 1, renderScale: 0.75, envIntensity: 0.8, toneMapping: 'linear' }));
+  row.appendChild(preset('Medium', { shadowQuality: 'medium', shadowType: 'pcf', exposure: 1.05, pixelRatioCap: 1.5, renderScale: 1, envIntensity: 1, toneMapping: 'aces' }));
+  row.appendChild(preset('High', { shadowQuality: 'high', shadowType: 'pcfsoft', exposure: 1.05, pixelRatioCap: 2, renderScale: 1, envIntensity: 1, toneMapping: 'aces' }));
+  row.appendChild(preset('Ultra', { shadowQuality: 'ultra', shadowType: 'pcfsoft', exposure: 1.1, pixelRatioCap: 2.5, renderScale: 1.25, envIntensity: 1.2, toneMapping: 'aces' }));
+  s4.appendChild(row);
+  s4.appendChild(el('p', 'hint', 'Presets set shadow quality, resolution scale and exposure together.'));
+  pane.appendChild(s4);
+
+  bindSectionCollapse(pane);
+}
+
+function applyGraphicsSettings() {
+  var g = state.settings.graphics || {};
+  var tm = g.toneMapping || 'aces';
+  if (tm === 'aces') renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  else if (tm === 'cineon') renderer.toneMapping = THREE.CineonToneMapping;
+  else if (tm === 'reinhard') renderer.toneMapping = THREE.ReinhardToneMapping;
+  else if (tm === 'linear') renderer.toneMapping = THREE.LinearToneMapping;
+  else renderer.toneMapping = THREE.NoToneMapping;
+  renderer.toneMappingExposure = g.exposure == null ? 1.05 : g.exposure;
+  var st = g.shadowType || 'pcfsoft';
+  if (st === 'basic') renderer.shadowMap.type = THREE.BasicShadowMap;
+  else if (st === 'pcf') renderer.shadowMap.type = THREE.PCFShadowMap;
+  else renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.needsUpdate = true;
+  var cap = g.pixelRatioCap == null ? 2 : g.pixelRatioCap;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, cap));
+  var sq = g.shadowQuality || 'high';
+  var mapSize = sq === 'low' ? 512 : sq === 'medium' ? 1024 : sq === 'ultra' ? 4096 : 2048;
+  editorScene.traverse(function (n) {
+    if (n.isLight && n.shadow && n.shadow.mapSize) {
+      n.shadow.mapSize.set(mapSize, mapSize);
+      if (n.shadow.map) { n.shadow.map.dispose(); n.shadow.map = null; }
+    }
+  });
+  resize();
 }
 
 function applyWorldSettings() {
@@ -4005,6 +4938,34 @@ function buildExportHTML(project) {
 '  #gl{display:block;width:100vw;height:100vh}\n' +
 '  #uilayer{position:fixed;inset:0;pointer-events:none;overflow:hidden}\n' +
 '  #uilayer .ui-el{position:absolute;pointer-events:auto}\n' +
+'  .k-hud-bar{position:absolute;display:flex;align-items:center;gap:8px;padding:4px 10px 4px 8px;\n' +
+'    background:linear-gradient(180deg, rgba(34,42,54,.85) 0%, rgba(14,18,24,.85) 100%);\n' +
+'    backdrop-filter:blur(12px) saturate(140%);-webkit-backdrop-filter:blur(12px) saturate(140%);\n' +
+'    border:1px solid rgba(255,255,255,.14);border-radius:999px;\n' +
+'    box-shadow:0 6px 22px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.10), inset 0 -1px 0 rgba(0,0,0,.35);\n' +
+'    overflow:hidden;pointer-events:none;font-family:"Segoe UI",Arial,sans-serif;\n' +
+'    transition:opacity .35s ease, transform .25s ease;z-index:5}\n' +
+'  .k-hud-bar.hidden{opacity:0 !important}\n' +
+'  .k-hud-track{position:relative;flex:1;height:100%;min-width:60px;background:rgba(0,0,0,.5);\n' +
+'    border-radius:999px;overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.7), inset 0 -1px 0 rgba(255,255,255,.05)}\n' +
+'  .k-hud-fill{position:absolute;left:0;top:0;bottom:0;width:100%;\n' +
+'    background:linear-gradient(180deg, #6cf0a8 0%, #3ddc84 55%, #1fa15f 100%);\n' +
+'    border-radius:999px;box-shadow:0 0 12px rgba(61,220,132,.55), inset 0 1px 0 rgba(255,255,255,.4);\n' +
+'    transition:width .28s cubic-bezier(.22,.61,.36,1), background .28s ease, box-shadow .28s ease}\n' +
+'  .k-hud-fill.high{background:linear-gradient(180deg,#6cf0a8 0%,#3ddc84 55%,#1fa15f 100%);box-shadow:0 0 12px rgba(61,220,132,.55), inset 0 1px 0 rgba(255,255,255,.4)}\n' +
+'  .k-hud-fill.mid{background:linear-gradient(180deg,#ffd07a 0%,#f0a030 55%,#a86d16 100%);box-shadow:0 0 14px rgba(240,160,48,.6), inset 0 1px 0 rgba(255,255,255,.4)}\n' +
+'  .k-hud-fill.low{background:linear-gradient(180deg,#ff7d7d 0%,#e33a3a 55%,#8a1a1a 100%);box-shadow:0 0 16px rgba(227,58,58,.65), inset 0 1px 0 rgba(255,255,255,.4)}\n' +
+'  .k-hud-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;\n' +
+'    font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.9), 0 0 4px rgba(0,0,0,.5);\n' +
+'    letter-spacing:.6px;pointer-events:none;font-variant-numeric:tabular-nums}\n' +
+'  .k-hud-heart{display:flex;align-items:center;justify-content:center;width:20px;height:20px;font-size:13px;\n' +
+'    color:#ff5577;filter:drop-shadow(0 1px 2px rgba(0,0,0,.75));transition:color .25s ease, transform .15s ease;flex:0 0 auto}\n' +
+'  .k-hud-bar.low .k-hud-heart{color:#ff2038;animation:hudHeartPulse .9s ease-in-out infinite}\n' +
+'  @keyframes hudHeartPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.22)}}\n' +
+'  .k-dmg-flash{position:fixed;inset:0;pointer-events:none;z-index:100;\n' +
+'    background:radial-gradient(ellipse at center, transparent 35%, rgba(210,25,25,.55) 100%);\n' +
+'    opacity:0;transition:opacity .35s ease}\n' +
+'  .k-dmg-flash.on{opacity:1;transition:opacity .05s}\n' +
 '  #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;\n' +
 '    background:#05070a;color:#8ea3bb;font-size:15px;letter-spacing:2px;z-index:20}\n' +
 '  #hint{position:fixed;left:12px;bottom:12px;color:#7f93aa;font-size:12px;z-index:10}\n' +
@@ -4034,12 +4995,14 @@ function buildExportHTML(project) {
 'const KRuntime = ' + runtimeSrc + ';\n\n' +
 'const canvas = document.getElementById("gl");\n' +
 'const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });\n' +
-'renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));\n' +
+'const G = (PROJECT.settings && PROJECT.settings.graphics) || {};\n' +
+'renderer.setPixelRatio(Math.min(window.devicePixelRatio, G.pixelRatioCap || 2));\n' +
 'renderer.setSize(window.innerWidth, window.innerHeight);\n' +
 'renderer.shadowMap.enabled = true;\n' +
-'renderer.shadowMap.type = THREE.PCFSoftShadowMap;\n' +
-'renderer.toneMapping = THREE.ACESFilmicToneMapping;\n' +
-'renderer.toneMappingExposure = 1.05;\n' +
+'renderer.shadowMap.type = G.shadowType === "basic" ? THREE.BasicShadowMap : (G.shadowType === "pcf" ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap);\n' +
+'var tm = G.toneMapping || "aces";\n' +
+'renderer.toneMapping = tm === "cineon" ? THREE.CineonToneMapping : tm === "reinhard" ? THREE.ReinhardToneMapping : tm === "linear" ? THREE.LinearToneMapping : tm === "none" ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;\n' +
+'renderer.toneMappingExposure = G.exposure == null ? 1.05 : G.exposure;\n' +
 'renderer.outputColorSpace = THREE.SRGBColorSpace;\n\n' +
 'const rt = KRuntime(THREE, CANNON, { GLTFLoader, RGBELoader, Sky, EffectComposer, RenderPass, UnrealBloomPass }, {});\n' +
 'rt.load(PROJECT, document.getElementById("uilayer"));\n' +
@@ -4307,6 +5270,7 @@ function showEditor() {
   buildWorldPanel();
   buildCutscenePanel();
   buildMissionsPanel();
+  buildGraphicsPanel();
   updateStatusBar();
 }
 
@@ -4322,7 +5286,8 @@ function resize() {
   var vp = $('#viewport');
   var w = vp.clientWidth || 800;
   var h = vp.clientHeight || 600;
-  renderer.setSize(w, h, false);
+  var scale = (state.settings.graphics && state.settings.graphics.renderScale) || 1;
+  renderer.setSize(Math.round(w * scale), Math.round(h * scale), false);
   renderer.domElement.style.width = '100%';
   renderer.domElement.style.height = '100%';
   editorCam.aspect = w / h;
@@ -4349,6 +5314,7 @@ $$('.tab').forEach(function (t) {
     if (t.dataset.tab === 'code') buildCodePanel();
     if (t.dataset.tab === 'cutscene') buildCutscenePanel();
     if (t.dataset.tab === 'world') buildWorldPanel();
+    if (t.dataset.tab === 'graphics') buildGraphicsPanel();
     if (t.dataset.tab === 'inspector') buildInspector(state.selected);
   };
 });
@@ -4619,9 +5585,11 @@ function loop(now) {
 function boot() {
   buildToolbox();
   buildWorldPanel();
+  buildGraphicsPanel();
   buildInspector(null);
   buildMissionsPanel();
   applyWorldSettings();
+  applyGraphicsSettings();
   renderProjectList();
   resize();
   updateStatusBar();
@@ -4632,61 +5600,18 @@ const STARTER = {
   name: 'Untitled Game',
   settings: null,
   vars: {},
-  missions: [
-    { id: 'mis1', name: 'Touch The Green Cube', description: 'Click the glowing cube.', autoSave: true, reward: '100 coins' },
-    { id: 'mis2', name: 'Reach The Blue Block', description: 'Walk to the blue block.', autoSave: true, reward: '500 coins' }
-  ],
+  missions: [],
   cutscenes: [],
   objects: [
     { id: 'o_ground', name: 'Ground', type: 'plane', parent: null, pos: [0, 0, 0], rot: [0, 0, 0], scale: [60, 1, 60],
       visible: true, props: { color: '#3b4652', material: 'standard', roughness: 0.95, metalness: 0, physics: 'static', castShadow: false }, rules: [], script: '' },
     { id: 'o_sun', name: 'Sun', type: 'light', parent: null, pos: [18, 26, 14], rot: [0, 0, 0], scale: [1, 1, 1],
-      visible: true, props: { light: 'directional', color: '#fff4e0', intensity: 2.4, shadows: true }, rules: [], script: '' },
+      visible: true, props: { light: 'directional', color: '#fff4e0', intensity: 2.6, shadows: true }, rules: [], script: '' },
     { id: 'o_player', name: 'PlayerCharacter', type: 'character', parent: null, pos: [0, 0, 6], rot: [0, 0, 0], scale: [1, 1, 1],
       visible: true,
       props: { url: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Soldier.glb',
                autoscale: true, clip: '', flipModel: true, physics: 'dynamic', isPlayer: true },
-      rules: [], script: '' },
-    { id: 'o_block', name: 'BlueBlock', type: 'part', parent: null, pos: [-3, 0.5, 0], rot: [0, 0, 0], scale: [2, 1, 2],
-      visible: true, props: { color: '#4a9eff', material: 'standard', metalness: 0.2, roughness: 0.4, opacity: 1, physics: 'static' }, rules: [], script: '' },
-    { id: 'o_spin', name: 'SpinningCube', type: 'part', parent: null, pos: [3, 1.5, 0], rot: [0, 0, 0], scale: [1, 1, 1],
-      visible: true, props: { color: '#22c98a', material: 'neon', emissive: '#22c98a', emissiveIntensity: 1.6, opacity: 1, physics: 'static' },
-      rules: [
-        { when: 'click', do: 'completeMission', args: { value: 'Touch The Green Cube' }, key: 'Space', varName: '' },
-        { when: 'click', do: 'playSound', args: { value: 'coin', volume: 0.6 } },
-        { when: 'click', do: 'setColor', args: { value: '#ffb020' } }
-      ],
-      script: 'K.on("tick", function (dt) {\n  me.rotate(0, dt * 1.2, 0);\n});'
-    },
-    { id: 'o_spawn', name: 'SpawnPoint', type: 'spawn', parent: null, pos: [0, 0.1, 6], rot: [0, 0, 0], scale: [1, 1, 1],
-      visible: true, props: {}, rules: [], script: '' },
-    { id: 'o_ui', name: 'HUDText', type: 'uitext', parent: null, pos: [0, 0, 0], rot: [0, 0, 0], scale: [1, 1, 1],
-      visible: true, props: {
-        x: 22, y: 20, w: 400, h: 36,
-        text: 'KEngine1 - Click the green cube!',
-        fontFamily: 'Segoe UI, Arial',
-        fontSize: 18, fontWeight: 'bold', fontStyle: 'normal',
-        color: '#ffffff', bg: 'transparent',
-        textAlign: 'left', letterSpacing: 0, lineHeight: 1.4,
-        padding: '4px 8px',
-        opacity: 1, fadeInDuration: 300, fadeOutDuration: 300
-      },
-      rules: [], script: '' },
-    { id: 'o_missionbtn', name: 'MissionButton', type: 'uibutton', parent: null, pos: [0, 0, 0], rot: [0, 0, 0], scale: [1, 1, 1],
-      visible: true, props: {
-        x: 22, y: 60, w: 220, h: 44,
-        text: 'Save Game',
-        bg: '#22c98a', color: '#04140d',
-        fontFamily: 'Segoe UI, Arial',
-        fontSize: 15, fontWeight: 'bold', fontStyle: 'normal',
-        textAlign: 'center', letterSpacing: 0, lineHeight: 1.4,
-        padding: '4px 8px', radius: 8,
-        opacity: 1, fadeInDuration: 300, fadeOutDuration: 300
-      },
-      rules: [
-        { when: 'click', do: 'saveGame', args: {} },
-        { when: 'click', do: 'playSound', args: { value: 'powerup', volume: 0.6 } }
-      ], script: '' }
+      rules: [], script: '' }
   ]
 };
 
@@ -4842,9 +5767,20 @@ window.addEventListener('load', function () {
     project.settings.player.camDist = 5.5;
     project.settings.player.camHeight = 1.6;
     project.settings.player.camSmooth = 0.82;
+    project.settings.player.maxHealth = 100;
+    project.settings.player.fallDamage = true;
+    project.settings.player.fallDamageThreshold = 9;
+    project.settings.player.fallDamageMultiplier = 4;
+    project.settings.player.healthUI = {
+      show: true, position: 'bottom-left', width: 260, height: 26, cornerRadius: 999,
+      opacity: 1, showText: true, textStyle: 'number', showHeart: true,
+      trackColor: 'rgba(0,0,0,.5)', borderColor: 'rgba(255,255,255,.14)',
+      lowColor: '', midColor: '', highColor: ''
+    };
     project.settings.save.key = 'starter_game';
     applyProject(project);
     buildWorldPanel();
+    buildGraphicsPanel();
     showEditor();
   };
   $('#btnContinue').onclick = function () {
