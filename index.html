@@ -341,6 +341,28 @@ const TEXTURE_SOURCES = [
   { n:'Terrain',   u:'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/terrain/grasslight-big.jpg' }
 ];
 
+const FONT_FAMILIES = [
+  'Segoe UI, Arial',
+  'Arial, sans-serif',
+  'Helvetica, sans-serif',
+  'Verdana, sans-serif',
+  'Tahoma, sans-serif',
+  'Trebuchet MS, sans-serif',
+  'Georgia, serif',
+  'Times New Roman, serif',
+  'Garamond, serif',
+  'Courier New, monospace',
+  'Consolas, monospace',
+  'Monaco, monospace',
+  'Menlo, monospace',
+  'Impact, sans-serif',
+  'Comic Sans MS, cursive',
+  'Palatino Linotype, serif',
+  'Brush Script MT, cursive',
+  'Lucida Console, monospace',
+  'system-ui, sans-serif'
+];
+
 const SYNTH_SOUNDS = [
   { n:'Beep', k:'beep' },{ n:'Explosion', k:'explosion' },{ n:'Jump', k:'jump' },
   { n:'Coin', k:'coin' },{ n:'Laser', k:'laser' },{ n:'Footstep', k:'footstep' },
@@ -725,6 +747,8 @@ function KRuntime(THREE, CANNON, deps, opts) {
           p.remove(rec.textMesh); p.add(nm); rec.textMesh = nm;
         }
       },
+      fadeIn: function (duration) { fadeUI(rec, true, duration); },
+      fadeOut: function (duration) { fadeUI(rec, false, duration); },
       playAnimation: function (name) { playClip(rec, name); },
       stopAnimations: function () { if (rec.mixer) rec.mixer.stopAllAction(); },
       lookAt: function (t) { if (t && t.object) o.lookAt(t.object.position); else if (t) o.lookAt(t.x, t.y, t.z); },
@@ -761,6 +785,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
 
   function destroyObject(rec) {
     if (!rec) return;
+    if (rec._fadeRaf) { try { cancelAnimationFrame(rec._fadeRaf); } catch (e) {} rec._fadeRaf = null; }
     if (rec.body && R.world) R.world.removeBody(rec.body);
     if (rec.obj.parent) rec.obj.parent.remove(rec.obj);
     rec.obj.traverse(function (n) {
@@ -956,9 +981,24 @@ function KRuntime(THREE, CANNON, deps, opts) {
   }
   R.loadModel = loadModel;
 
+  function applyTextProps(node, p, isButton) {
+    p = p || {};
+    node.style.color = p.color || (isButton ? '#04121f' : '#ffffff');
+    var defaultSize = isButton ? 16 : 18;
+    node.style.fontSize = (p.fontSize == null ? defaultSize : p.fontSize) + 'px';
+    node.style.fontFamily = p.fontFamily || p.font || 'Segoe UI, Arial';
+    node.style.fontWeight = (p.fontWeight != null && p.fontWeight !== '') ? p.fontWeight : (isButton ? '600' : 'normal');
+    node.style.fontStyle = p.fontStyle || 'normal';
+    node.style.textAlign = p.textAlign || 'left';
+    node.style.letterSpacing = (p.letterSpacing == null ? 0 : p.letterSpacing) + 'px';
+    node.style.lineHeight = String(p.lineHeight == null ? 1.4 : p.lineHeight);
+    node.style.padding = p.padding == null ? '4px 8px' : p.padding;
+  }
+
   function buildUI(rec) {
     if (!R.uiRoot) return;
     var p = rec.def.props;
+    var t = rec.def.type;
     var n = document.createElement('div');
     n.className = 'ui-el';
     n.style.position = 'absolute';
@@ -967,46 +1007,114 @@ function KRuntime(THREE, CANNON, deps, opts) {
     n.style.width = (p.w || 200) + 'px';
     n.style.height = (p.h || 48) + 'px';
     n.style.borderRadius = (p.radius == null ? 8 : p.radius) + 'px';
-    n.style.display = rec.def.visible === false ? 'none' : 'block';
     n.style.userSelect = 'none';
-    if (rec.def.type === 'uitext') {
-      n.style.color = p.color || '#ffffff';
-      n.style.fontSize = (p.fontSize || 18) + 'px';
-      n.style.fontFamily = p.font || 'Segoe UI, Arial';
-      n.style.background = p.bg && p.bg !== 'transparent' ? p.bg : 'transparent';
-      n.style.padding = '4px 8px';
+    n.style.opacity = String(p.opacity == null ? 1 : p.opacity);
+
+    var displayStyle = 'block';
+    if (t === 'uitext') {
+      applyTextProps(n, p, false);
       n.textContent = p.text || 'Text';
-    } else if (rec.def.type === 'uiimage') {
+      n.style.background = p.bg && p.bg !== 'transparent' ? p.bg : 'transparent';
+      displayStyle = 'block';
+    } else if (t === 'uiimage') {
       n.style.background = p.bg || 'transparent';
       n.style.backgroundImage = 'url(' + (p.src || '') + ')';
       n.style.backgroundSize = p.fit || 'contain';
-      n.style.backgroundRepeat = 'no-repeat';
+      n.style.backgroundRepeat = p.fit === 'repeat' ? 'repeat' : 'no-repeat';
       n.style.backgroundPosition = 'center';
-      n.style.opacity = p.opacity == null ? 1 : p.opacity;
-    } else if (rec.def.type === 'uibutton') {
+      displayStyle = 'block';
+    } else if (t === 'uibutton') {
+      applyTextProps(n, p, true);
+      n.textContent = p.text || 'Button';
       n.style.background = p.bg || '#3ea6ff';
-      n.style.color = p.color || '#04121f';
       n.style.display = 'flex';
       n.style.alignItems = 'center';
       n.style.justifyContent = 'center';
-      n.style.fontWeight = '600';
       n.style.cursor = 'pointer';
-      n.style.fontSize = (p.fontSize || 16) + 'px';
-      n.textContent = p.text || 'Button';
       n.style.pointerEvents = 'auto';
+      displayStyle = 'flex';
       n.addEventListener('click', function (ev) { ev.stopPropagation(); fire('click', rec, { ui: true }); });
       n.addEventListener('touchstart', function (ev) { ev.stopPropagation(); fire('touch', rec, { ui: true }); }, { passive: true });
-    } else if (rec.def.type === 'uiframe') {
-      n.style.border = '2px solid ' + (p.color || '#3ea6ff');
+    } else if (t === 'uiframe') {
+      var bw = p.borderWidth == null ? 2 : p.borderWidth;
+      var bs = p.borderStyle || 'solid';
+      n.style.border = bw + 'px ' + bs + ' ' + (p.color || '#3ea6ff');
       n.style.background = p.bg || 'rgba(10,20,30,.55)';
+      displayStyle = 'block';
     }
+
+    if (rec.def.visible === false) {
+      n.style.display = 'none';
+    } else {
+      n.style.display = displayStyle;
+    }
+
     R.uiRoot.appendChild(n);
     rec.uiNode = n;
   }
 
+  function fadeUI(rec, toVisible, duration) {
+    if (!rec.uiNode) return;
+    var n = rec.uiNode;
+    var d = Math.max(0, duration == null ? 300 : duration);
+    var base = rec.def.props.opacity == null ? 1 : rec.def.props.opacity;
+    if (rec._fadeRaf) { try { cancelAnimationFrame(rec._fadeRaf); } catch (e) {} rec._fadeRaf = null; }
+
+    var displayStyle = rec.def.type === 'uibutton' ? 'flex' : 'block';
+
+    if (toVisible) {
+      rec.obj.visible = true;
+      rec.def.visible = true;
+      n.style.display = displayStyle;
+      n.style.pointerEvents = rec.def.type === 'uibutton' ? 'auto' : 'auto';
+    }
+
+    var cur = parseFloat(n.style.opacity);
+    if (isNaN(cur)) cur = toVisible ? 0 : base;
+    var start = cur;
+    var end = toVisible ? base : 0;
+
+    if (d <= 0) {
+      n.style.opacity = String(end);
+      if (!toVisible) {
+        n.style.display = 'none';
+        n.style.pointerEvents = 'none';
+        rec.obj.visible = false;
+        rec.def.visible = false;
+      }
+      return;
+    }
+
+    var t0 = performance.now();
+    function step(now) {
+      var t = Math.min(1, (now - t0) / d);
+      var e = t * (2 - t);
+      n.style.opacity = String(start + (end - start) * e);
+      if (t < 1) {
+        rec._fadeRaf = requestAnimationFrame(step);
+      } else {
+        rec._fadeRaf = null;
+        if (!toVisible) {
+          n.style.display = 'none';
+          n.style.pointerEvents = 'none';
+          rec.obj.visible = false;
+          rec.def.visible = false;
+        }
+      }
+    }
+    rec._fadeRaf = requestAnimationFrame(step);
+  }
+  R.fadeUI = fadeUI;
+
   function refreshUI() {
     R.objects.forEach(function (rec) {
-      if (rec.uiNode) rec.uiNode.style.display = rec.obj.visible && rec.def.visible !== false ? '' : 'none';
+      if (!rec.uiNode) return;
+      var visible = rec.obj.visible && rec.def.visible !== false;
+      if (!visible) {
+        rec.uiNode.style.display = 'none';
+      } else if (!rec._fadeRaf) {
+        rec.uiNode.style.display = rec.def.type === 'uibutton' ? 'flex' : 'block';
+      }
     });
   }
   R.refreshUI = refreshUI;
@@ -1056,8 +1164,10 @@ function KRuntime(THREE, CANNON, deps, opts) {
       case 'impulse': if (rec.body) rec.body.applyImpulse(new CANNON.Vec3(argNum(a, 'x', 0), argNum(a, 'y', 5), argNum(a, 'z', 0)), rec.body.position); break;
       case 'setCamera': if (target) { var c = null; target.object.traverse(function (n) { if (n.isCamera && !c) c = n; }); if (c) R.camera = c; } break;
       case 'lookAt': if (target) rec.obj.lookAt(target.object.position); break;
-      case 'showUI': { var u = R.byName[a.value || a.target]; if (u) { u.obj.visible = true; if (u.uiNode) u.uiNode.style.display = ''; } break; }
-      case 'hideUI': { var u2 = R.byName[a.value || a.target]; if (u2) { u2.obj.visible = false; if (u2.uiNode) u2.uiNode.style.display = 'none'; } break; }
+      case 'showUI': { var u = R.byName[a.value || a.target]; if (u) { u.obj.visible = true; u.def.visible = true; if (u.uiNode) { u.uiNode.style.display = u.def.type === 'uibutton' ? 'flex' : 'block'; u.uiNode.style.opacity = String(u.def.props.opacity == null ? 1 : u.def.props.opacity); } } break; }
+      case 'hideUI': { var u2 = R.byName[a.value || a.target]; if (u2) { u2.obj.visible = false; u2.def.visible = false; if (u2.uiNode) u2.uiNode.style.display = 'none'; } break; }
+      case 'fadeInUI': { var fi = R.byName[a.value || a.target]; if (fi) fadeUI(fi, true, argNum(a, 'duration', 300)); break; }
+      case 'fadeOutUI': { var fo = R.byName[a.value || a.target]; if (fo) fadeUI(fo, false, argNum(a, 'duration', 300)); break; }
       case 'openURL': try { window.open(a.value, '_blank'); } catch (e) {} break;
       case 'print': console.log('[KEngine1]', a.value); break;
       case 'emit': fire(a.value || 'custom', null, { from: rec.def.name }); break;
@@ -1104,7 +1214,6 @@ function KRuntime(THREE, CANNON, deps, opts) {
     }
   }
 
-  /* ---------- NEW: obstacle ray check for the player ---------- */
   function castObstacleRay(from, to, excludeBody) {
     if (!R.world) return false;
     var ray = new CANNON.Ray(new CANNON.Vec3(from.x, from.y, from.z),
@@ -1256,7 +1365,6 @@ function KRuntime(THREE, CANNON, deps, opts) {
     var spd = p.speed * (running ? 1.8 : 1) * (moving ? 1 : 0);
 
     if (p.isObjectPlayer) {
-      /* ---------- obstacle check before applying velocity ---------- */
       if (p.body && moving && !p.fly) {
         var halfExtent = getPlayerHalfExtent(p);
         var lookAhead = halfExtent + 0.2;
@@ -1280,9 +1388,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
             p.body
           );
         }
-        /* If BOTH axes are blocked, do not freeze - let the physics engine slide us out */
         if (blockedX && blockedZ) { blockedX = false; blockedZ = false; }
-        /* zero the blocked axis, slide along the free axis */
         if (blockedX) dx = 0;
         if (blockedZ) dz = 0;
       }
@@ -1655,6 +1761,14 @@ function KRuntime(THREE, CANNON, deps, opts) {
     deleteSave: function () { return R.deleteSave(); },
     resetMissions: function () { return R.resetMissions(); },
     missionProgress: function () { return R.getMissionProgress(); },
+    fadeIn: function (name, duration) {
+      var r = R.byName[name];
+      if (r) fadeUI(r, true, duration);
+    },
+    fadeOut: function (name, duration) {
+      var r = R.byName[name];
+      if (r) fadeUI(r, false, duration);
+    },
     setPlayer: function (name) {
       R.objects.forEach(function (r) { r.def.props.isPlayer = false; });
       var t = R.byName[name];
@@ -2012,10 +2126,40 @@ function defaultDef(type) {
     case 'sound': d.props = { synth: 'beep', src: '', volume: 0.6, autoplay: false }; d.name = 'Sound'; break;
     case 'spawn': d.pos = [0, 0.1, 0]; d.props = {}; d.name = 'SpawnPoint'; break;
     case 'group': d.props = {}; d.name = 'Group'; break;
-    case 'uitext': d.props = { x: 24, y: 24, w: 260, h: 40, text: 'Score: 0', fontSize: 20, color: '#ffffff', bg: 'transparent', font: 'Segoe UI, Arial' }; d.name = 'UIText'; break;
-    case 'uiimage': d.props = { x: 24, y: 90, w: 160, h: 160, src: TEXTURE_SOURCES[1].u, fit: 'contain', bg: 'transparent', opacity: 1 }; d.name = 'UIImage'; break;
-    case 'uibutton': d.props = { x: 24, y: 280, w: 180, h: 48, text: 'Click Me', bg: '#3ea6ff', color: '#04121f', fontSize: 16, radius: 8 }; d.name = 'UIButton'; break;
-    case 'uiframe': d.props = { x: 24, y: 340, w: 220, h: 120, bg: 'rgba(10,20,30,.55)', color: '#3ea6ff', radius: 10 }; d.name = 'UIFrame'; break;
+    case 'uitext': d.props = {
+      x: 24, y: 24, w: 260, h: 40,
+      text: 'Score: 0',
+      fontFamily: 'Segoe UI, Arial',
+      fontSize: 20, fontWeight: 'normal', fontStyle: 'normal',
+      color: '#ffffff', bg: 'transparent',
+      textAlign: 'left', letterSpacing: 0, lineHeight: 1.4,
+      padding: '4px 8px',
+      opacity: 1, fadeInDuration: 300, fadeOutDuration: 300
+    }; d.name = 'UIText'; break;
+    case 'uiimage': d.props = {
+      x: 24, y: 90, w: 160, h: 160,
+      src: TEXTURE_SOURCES[1].u, fit: 'contain',
+      bg: 'transparent',
+      opacity: 1, fadeInDuration: 300, fadeOutDuration: 300
+    }; d.name = 'UIImage'; break;
+    case 'uibutton': d.props = {
+      x: 24, y: 280, w: 180, h: 48,
+      text: 'Click Me',
+      bg: '#3ea6ff', color: '#04121f',
+      fontFamily: 'Segoe UI, Arial',
+      fontSize: 16, fontWeight: '600', fontStyle: 'normal',
+      textAlign: 'center', letterSpacing: 0, lineHeight: 1.4,
+      padding: '4px 8px', radius: 8,
+      opacity: 1, fadeInDuration: 300, fadeOutDuration: 300
+    }; d.name = 'UIButton'; break;
+    case 'uiframe': d.props = {
+      x: 24, y: 340, w: 220, h: 120,
+      bg: 'rgba(10,20,30,.55)',
+      color: '#3ea6ff',
+      borderWidth: 2, borderStyle: 'solid',
+      radius: 10,
+      opacity: 1, fadeInDuration: 300, fadeOutDuration: 300
+    }; d.name = 'UIFrame'; break;
   }
   return d;
 }
@@ -2377,6 +2521,20 @@ function duplicateObject(obj) {
 /* =====================================================================
    SECTION 6 - UI LAYER (editor preview with drag support)
    ===================================================================== */
+function applyTextPropsEditor(node, p, isButton) {
+  p = p || {};
+  node.style.color = p.color || (isButton ? '#04121f' : '#ffffff');
+  var defaultSize = isButton ? 16 : 18;
+  node.style.fontSize = (p.fontSize == null ? defaultSize : p.fontSize) + 'px';
+  node.style.fontFamily = p.fontFamily || p.font || 'Segoe UI, Arial';
+  node.style.fontWeight = (p.fontWeight != null && p.fontWeight !== '') ? p.fontWeight : (isButton ? '600' : 'normal');
+  node.style.fontStyle = p.fontStyle || 'normal';
+  node.style.textAlign = p.textAlign || 'left';
+  node.style.letterSpacing = (p.letterSpacing == null ? 0 : p.letterSpacing) + 'px';
+  node.style.lineHeight = String(p.lineHeight == null ? 1.4 : p.lineHeight);
+  node.style.padding = p.padding == null ? '4px 8px' : p.padding;
+}
+
 function refreshUILayer() {
   var layer = $('#uilayer');
   layer.innerHTML = '';
@@ -2398,33 +2556,30 @@ function refreshUILayer() {
     n.style.pointerEvents = 'auto';
     n.style.cursor = 'move';
     n.style.userSelect = 'none';
+    n.style.opacity = String(p.opacity == null ? 1 : p.opacity);
     n.dataset.kid = o.userData.def.id;
 
     if (t === 'uitext') {
-      n.style.color = p.color || '#fff';
-      n.style.fontSize = (p.fontSize || 18) + 'px';
-      n.style.fontFamily = p.font || 'Segoe UI, Arial';
+      applyTextPropsEditor(n, p, false);
       n.style.background = p.bg && p.bg !== 'transparent' ? p.bg : 'transparent';
-      n.style.padding = '4px 8px';
       n.textContent = p.text || '';
     } else if (t === 'uiimage') {
       n.style.background = p.bg || 'transparent';
       n.style.backgroundImage = 'url(' + (p.src || '') + ')';
       n.style.backgroundSize = p.fit || 'contain';
-      n.style.backgroundRepeat = 'no-repeat';
+      n.style.backgroundRepeat = p.fit === 'repeat' ? 'repeat' : 'no-repeat';
       n.style.backgroundPosition = 'center';
-      n.style.opacity = p.opacity == null ? 1 : p.opacity;
     } else if (t === 'uibutton') {
+      applyTextPropsEditor(n, p, true);
       n.style.background = p.bg || '#3ea6ff';
-      n.style.color = p.color || '#04121f';
-      n.style.display = 'flex';
+      n.style.display = o.visible ? 'flex' : 'none';
       n.style.alignItems = 'center';
       n.style.justifyContent = 'center';
-      n.style.fontWeight = '600';
-      n.style.fontSize = (p.fontSize || 16) + 'px';
       n.textContent = p.text || '';
     } else {
-      n.style.border = '2px solid ' + (p.color || '#3ea6ff');
+      var bw = p.borderWidth == null ? 2 : p.borderWidth;
+      var bs = p.borderStyle || 'solid';
+      n.style.border = bw + 'px ' + bs + ' ' + (p.color || '#3ea6ff');
       n.style.background = p.bg || 'rgba(10,20,30,.55)';
     }
 
@@ -2657,8 +2812,108 @@ function buildInspector(obj) {
   pane.appendChild(sp);
 
   if (def.type.indexOf('ui') === 0) {
-    var sui = section('UI - Drag in Viewport');
-    sui.appendChild(el('p', 'hint', 'Drag the element in the scene viewport to move it. Drag the blue square at the bottom-right to resize. Arrow keys nudge 1px (hold Shift for 10px).'));
+    var sui = section('UI Element');
+    sui.appendChild(field('X (px)', props.x == null ? 24 : props.x, function (v) { props.x = v; refreshUILayer(); }, 'number'));
+    sui.appendChild(field('Y (px)', props.y == null ? 24 : props.y, function (v) { props.y = v; refreshUILayer(); }, 'number'));
+    sui.appendChild(field('Width', props.w || 200, function (v) { props.w = v; refreshUILayer(); }, 'number'));
+    sui.appendChild(field('Height', props.h || 48, function (v) { props.h = v; refreshUILayer(); }, 'number'));
+    sui.appendChild(field('Corner radius', props.radius == null ? 8 : props.radius, function (v) { props.radius = v; refreshUILayer(); }, 'number'));
+    sui.appendChild(field('Opacity (0-1)', props.opacity == null ? 1 : props.opacity, function (v) { props.opacity = v; refreshUILayer(); }, 'number'));
+    sui.appendChild(field('Fade in duration (ms)', props.fadeInDuration == null ? 300 : props.fadeInDuration, function (v) { props.fadeInDuration = v; }, 'number'));
+    sui.appendChild(field('Fade out duration (ms)', props.fadeOutDuration == null ? 300 : props.fadeOutDuration, function (v) { props.fadeOutDuration = v; }, 'number'));
+    pane.appendChild(sui);
+
+    if (def.type === 'uitext' || def.type === 'uibutton') {
+      var st = section('Text Style');
+      st.appendChild(field('Text', props.text || '', function (v) { props.text = v; refreshUILayer(); }));
+
+      var fonts = FONT_FAMILIES.slice();
+      var currentFont = props.fontFamily || props.font || 'Segoe UI, Arial';
+      if (fonts.indexOf(currentFont) < 0) fonts.push(currentFont);
+      st.appendChild(selectField('Font family', currentFont,
+        fonts.map(function (f) { return { label: f, value: f }; }),
+        function (v) { props.fontFamily = v; refreshUILayer(); }
+      ));
+
+      var defaultSize = def.type === 'uibutton' ? 16 : 18;
+      st.appendChild(field('Font size', props.fontSize == null ? defaultSize : props.fontSize, function (v) { props.fontSize = v; refreshUILayer(); }, 'number'));
+
+      st.appendChild(selectField('Font weight', props.fontWeight || (def.type === 'uibutton' ? '600' : 'normal'), [
+        { label: 'Normal', value: 'normal' },
+        { label: 'Bold', value: 'bold' },
+        { label: '100 Thin', value: '100' },
+        { label: '200 Extra Light', value: '200' },
+        { label: '300 Light', value: '300' },
+        { label: '400 Regular', value: '400' },
+        { label: '500 Medium', value: '500' },
+        { label: '600 Semi Bold', value: '600' },
+        { label: '700 Bold', value: '700' },
+        { label: '800 Extra Bold', value: '800' },
+        { label: '900 Black', value: '900' }
+      ], function (v) { props.fontWeight = v; refreshUILayer(); }));
+
+      st.appendChild(selectField('Font style', props.fontStyle || 'normal', [
+        { label: 'Normal', value: 'normal' },
+        { label: 'Italic', value: 'italic' },
+        { label: 'Oblique', value: 'oblique' }
+      ], function (v) { props.fontStyle = v; refreshUILayer(); }));
+
+      st.appendChild(selectField('Text align', props.textAlign || 'left', [
+        { label: 'Left', value: 'left' },
+        { label: 'Center', value: 'center' },
+        { label: 'Right', value: 'right' },
+        { label: 'Justify', value: 'justify' }
+      ], function (v) { props.textAlign = v; refreshUILayer(); }));
+
+      st.appendChild(field('Letter spacing (px)', props.letterSpacing == null ? 0 : props.letterSpacing, function (v) { props.letterSpacing = v; refreshUILayer(); }, 'number'));
+      st.appendChild(field('Line height', props.lineHeight == null ? 1.4 : props.lineHeight, function (v) { props.lineHeight = v; refreshUILayer(); }, 'number'));
+      st.appendChild(field('Text color', props.color || (def.type === 'uibutton' ? '#04121f' : '#ffffff'), function (v) { props.color = v; refreshUILayer(); }, 'color'));
+      st.appendChild(field('Padding', props.padding || '4px 8px', function (v) { props.padding = v; refreshUILayer(); }));
+      pane.appendChild(st);
+    }
+
+    if (def.type === 'uitext') {
+      var sbg = section('Background');
+      sbg.appendChild(field('Background color', props.bg || 'transparent', function (v) { props.bg = v; refreshUILayer(); }));
+      pane.appendChild(sbg);
+    }
+
+    if (def.type === 'uiimage') {
+      var si = section('Image');
+      si.appendChild(field('Image URL', props.src || '', function (v) { props.src = v; refreshUILayer(); }));
+      si.appendChild(selectField('Fit', props.fit || 'contain', [
+        { label: 'Contain', value: 'contain' },
+        { label: 'Cover', value: 'cover' },
+        { label: 'Stretch', value: '100% 100%' },
+        { label: 'Repeat', value: 'repeat' }
+      ], function (v) { props.fit = v; refreshUILayer(); }));
+      si.appendChild(field('Background', props.bg || 'transparent', function (v) { props.bg = v; refreshUILayer(); }));
+      pane.appendChild(si);
+    }
+
+    if (def.type === 'uibutton') {
+      var sbtn = section('Button');
+      sbtn.appendChild(field('Button color', props.bg || '#3ea6ff', function (v) { props.bg = v; refreshUILayer(); }, 'color'));
+      pane.appendChild(sbtn);
+    }
+
+    if (def.type === 'uiframe') {
+      var sf = section('Frame');
+      sf.appendChild(field('Border color', props.color || '#3ea6ff', function (v) { props.color = v; refreshUILayer(); }, 'color'));
+      sf.appendChild(field('Border width', props.borderWidth == null ? 2 : props.borderWidth, function (v) { props.borderWidth = v; refreshUILayer(); }, 'number'));
+      sf.appendChild(selectField('Border style', props.borderStyle || 'solid', [
+        { label: 'Solid', value: 'solid' },
+        { label: 'Dashed', value: 'dashed' },
+        { label: 'Dotted', value: 'dotted' },
+        { label: 'Double', value: 'double' },
+        { label: 'None', value: 'none' }
+      ], function (v) { props.borderStyle = v; refreshUILayer(); }));
+      sf.appendChild(field('Background', props.bg || 'rgba(10,20,30,.55)', function (v) { props.bg = v; refreshUILayer(); }));
+      pane.appendChild(sf);
+    }
+
+    var snapSec = section('Snap & Position');
+    snapSec.appendChild(el('p', 'hint', 'Drag the element in the scene viewport to move it. Drag the blue square at the bottom-right to resize. Arrow keys nudge 1px (hold Shift for 10px).'));
     var recenterBtn = el('button', null, 'Snap to Viewport Center');
     recenterBtn.onclick = function () {
       var vp = $('#viewport');
@@ -2669,11 +2924,11 @@ function buildInspector(obj) {
       refreshUILayer();
       buildInspector(obj);
     };
-    sui.appendChild(recenterBtn);
+    snapSec.appendChild(recenterBtn);
     var topLeftBtn = el('button', null, 'Snap to Top-Left');
     topLeftBtn.onclick = function () { props.x = 12; props.y = 12; refreshUILayer(); buildInspector(obj); };
-    sui.appendChild(topLeftBtn);
-    pane.appendChild(sui);
+    snapSec.appendChild(topLeftBtn);
+    pane.appendChild(snapSec);
   }
 
   var s2 = section('Transform');
@@ -2733,12 +2988,12 @@ function buildInspector(obj) {
   }
 
   if (def.type === 'text') {
-    var st = section('Text');
-    st.appendChild(field('Text', props.text || '', function (v) { props.text = v; rebuildObject(obj); }));
-    st.appendChild(field('Size', props.size || 1, function (v) { props.size = v; rebuildObject(obj); }, 'number'));
-    st.appendChild(field('Color', props.color || '#ffffff', function (v) { props.color = v; rebuildObject(obj); }, 'color'));
-    st.appendChild(field('Background', props.bg || 'transparent', function (v) { props.bg = v; rebuildObject(obj); }));
-    pane.appendChild(st);
+    var st2 = section('Text');
+    st2.appendChild(field('Text', props.text || '', function (v) { props.text = v; rebuildObject(obj); }));
+    st2.appendChild(field('Size', props.size || 1, function (v) { props.size = v; rebuildObject(obj); }, 'number'));
+    st2.appendChild(field('Color', props.color || '#ffffff', function (v) { props.color = v; rebuildObject(obj); }, 'color'));
+    st2.appendChild(field('Background', props.bg || 'transparent', function (v) { props.bg = v; rebuildObject(obj); }));
+    pane.appendChild(st2);
   }
 
   if (def.type === 'model' || def.type === 'character') {
@@ -2747,7 +3002,7 @@ function buildInspector(obj) {
     sm.appendChild(checkField('Auto scale to 2 units', props.autoscale !== false, function (v) { props.autoscale = v; rebuildObject(obj); }));
     if (def.type === 'character') {
       sm.appendChild(checkField('Flip model 180° (turn to face away from camera)', !!props.flipModel, function (v) { props.flipModel = v; rebuildObject(obj); }));
-      sm.appendChild(el('p', 'hint', 'Turn this ON if the character is facing the camera in third-person view (their back should face you). Turn OFF if the character walks backwards.'));
+      sm.appendChild(el('p', 'hint', 'Turn this ON if the character is facing the camera in third-person view. Turn OFF if the character walks backwards.'));
     }
     var anims = obj.userData.animations || [];
     if (anims.length) {
@@ -2780,33 +3035,6 @@ function buildInspector(obj) {
     testBtn.onclick = function () { testSynth(props.synth || 'beep', props.volume); };
     ss.appendChild(testBtn);
     pane.appendChild(ss);
-  }
-
-  if (def.type.indexOf('ui') === 0) {
-    var su = section('UI Element');
-    su.appendChild(field('X (px)', props.x == null ? 24 : props.x, function (v) { props.x = v; refreshUILayer(); }, 'number'));
-    su.appendChild(field('Y (px)', props.y == null ? 24 : props.y, function (v) { props.y = v; refreshUILayer(); }, 'number'));
-    su.appendChild(field('Width', props.w || 200, function (v) { props.w = v; refreshUILayer(); }, 'number'));
-    su.appendChild(field('Height', props.h || 48, function (v) { props.h = v; refreshUILayer(); }, 'number'));
-    su.appendChild(field('Corner radius', props.radius == null ? 8 : props.radius, function (v) { props.radius = v; refreshUILayer(); }, 'number'));
-    if (def.type === 'uitext' || def.type === 'uibutton') {
-      su.appendChild(field('Text', props.text || '', function (v) { props.text = v; refreshUILayer(); }));
-      su.appendChild(field('Font size', props.fontSize || 18, function (v) { props.fontSize = v; refreshUILayer(); }, 'number'));
-      su.appendChild(field('Text color', props.color || '#ffffff', function (v) { props.color = v; refreshUILayer(); }, 'color'));
-      su.appendChild(field('Background', props.bg || 'transparent', function (v) { props.bg = v; refreshUILayer(); }));
-    }
-    if (def.type === 'uiimage') {
-      su.appendChild(field('Image URL', props.src || '', function (v) { props.src = v; refreshUILayer(); }));
-      su.appendChild(selectField('Fit', props.fit || 'contain', [
-        { label: 'Contain', value: 'contain' }, { label: 'Cover', value: 'cover' }, { label: 'Stretch', value: '100% 100%' }
-      ], function (v) { props.fit = v; refreshUILayer(); }));
-      su.appendChild(field('Opacity', props.opacity == null ? 1 : props.opacity, function (v) { props.opacity = v; refreshUILayer(); }, 'number'));
-    }
-    if (def.type === 'uiframe') {
-      su.appendChild(field('Border color', props.color || '#3ea6ff', function (v) { props.color = v; refreshUILayer(); }, 'color'));
-      su.appendChild(field('Background', props.bg || 'rgba(10,20,30,.55)', function (v) { props.bg = v; refreshUILayer(); }));
-    }
-    pane.appendChild(su);
   }
 
   var sph = section('Physics (advanced)');
@@ -3107,8 +3335,10 @@ const ACTIONS = [
   { v: 'attach', l: 'Attach to target' },
   { v: 'lookAt', l: 'Look at target' },
   { v: 'setCamera', l: 'Set active camera to target' },
-  { v: 'showUI', l: 'Show UI element' },
-  { v: 'hideUI', l: 'Hide UI element' },
+  { v: 'showUI', l: 'Show UI element (instant)' },
+  { v: 'hideUI', l: 'Hide UI element (instant)' },
+  { v: 'fadeInUI', l: 'Fade in UI element (smooth)' },
+  { v: 'fadeOutUI', l: 'Fade out UI element (smooth)' },
   { v: 'completeMission', l: 'Complete mission (name)' },
   { v: 'resetMissions', l: 'Reset all missions' },
   { v: 'saveGame', l: 'Save game (localStorage)' },
@@ -3137,7 +3367,7 @@ function buildLogicPanel() {
   hi.appendChild(el('p', 'hint', 'Rules are stored with the object and exported into the generated HTML.'));
   var addBtn = el('button', 'primary', 'Add Rule');
   addBtn.onclick = function () {
-    def.rules.push({ when: 'click', key: 'Space', varName: '', do: 'setVisible', args: { target: '', value: 'false', x: 0, y: 0, z: 0, name: 'score', volume: 0.6 } });
+    def.rules.push({ when: 'click', key: 'Space', varName: '', do: 'setVisible', args: { target: '', value: 'false', x: 0, y: 0, z: 0, name: 'score', volume: 0.6, duration: 300 } });
     buildLogicPanel();
   };
   hi.appendChild(addBtn);
@@ -3183,6 +3413,10 @@ function buildLogicPanel() {
     if (rule.do === 'playSound') box.appendChild(field('Volume', a.volume == null ? 0.6 : a.volume, function (v) { a.volume = v; }, 'number'));
     if (rule.do === 'jump') box.appendChild(field('Power', a.value == null ? 7 : a.value, function (v) { a.value = v; }, 'number'));
     if (rule.do === 'showUI' || rule.do === 'hideUI') box.appendChild(field('UI element name', a.value || a.target || '', function (v) { a.value = v; }));
+    if (rule.do === 'fadeInUI' || rule.do === 'fadeOutUI') {
+      box.appendChild(field('UI element name', a.value || a.target || '', function (v) { a.value = v; }));
+      box.appendChild(field('Duration (ms)', a.duration == null ? 300 : a.duration, function (v) { a.duration = v; }, 'number'));
+    }
     pane.appendChild(box);
   });
 }
@@ -3343,8 +3577,10 @@ function ruleToCode(def, r, self) {
     case 'teleport': return self + '.object.position.copy(' + tgt + '.object.position);';
     case 'attach': return tgt + '.object.attach(' + self + '.object);';
     case 'lookAt': return self + '.object.lookAt(' + tgt + '.object.position);';
-    case 'showUI': return 'me.setVisible(true);';
-    case 'hideUI': return 'me.setVisible(false);';
+    case 'showUI': return 'K.find("' + n('value', '') + '").setVisible(true);';
+    case 'hideUI': return 'K.find("' + n('value', '') + '").setVisible(false);';
+    case 'fadeInUI': return 'K.fadeIn("' + n('value', '') + '", ' + n('duration', 300) + ');';
+    case 'fadeOutUI': return 'K.fadeOut("' + n('value', '') + '", ' + n('duration', 300) + ');';
     case 'playCutscene': return 'K.playCutscene("' + n('value', '') + '");';
     case 'openURL': return 'window.open("' + n('value', '') + '", "_blank");';
     case 'sendNet': return 'K.sendNet("' + n('value', '') + '");';
@@ -3395,6 +3631,7 @@ function buildCodePanel() {
     'me.rotate(rx,ry,rz)         me.setRotation(x,y,z)',
     'me.setScale(x,y,z)          me.setColor("#ff0000")',
     'me.setVisible(true/false)   me.setText("...")',
+    'me.fadeIn(300)              me.fadeOut(300)',
     'me.playAnimation("clip")    me.stopAnimations()',
     'me.clone()                  me.destroy()',
     'me.lookAt(target)           me.getVar(name)/setVar(name,val)',
@@ -3407,6 +3644,7 @@ function buildCodePanel() {
     'K.destroy(objApi)           K.setVar(name, value)',
     'K.getVar(name)              K.playCutscene("Name")',
     'K.synth("beep", 0.5)        K.sendNet(data)',
+    'K.fadeIn("UIText", 300)     K.fadeOut("UIText", 300)',
     'K.completeMission(name)     K.isMissionComplete(name)',
     'K.saveGame()                K.loadGame()',
     'K.hasSave()                 K.deleteSave()',
@@ -4408,7 +4646,7 @@ const STARTER = {
       visible: true,
       props: { url: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Soldier.glb',
                autoscale: true, clip: '', flipModel: true, physics: 'dynamic', isPlayer: true },
-      rules: [], script: '// Soldier follows your mouse when standing still.' },
+      rules: [], script: '' },
     { id: 'o_block', name: 'BlueBlock', type: 'part', parent: null, pos: [-3, 0.5, 0], rot: [0, 0, 0], scale: [2, 1, 2],
       visible: true, props: { color: '#4a9eff', material: 'standard', metalness: 0.2, roughness: 0.4, opacity: 1, physics: 'static' }, rules: [], script: '' },
     { id: 'o_spin', name: 'SpinningCube', type: 'part', parent: null, pos: [3, 1.5, 0], rot: [0, 0, 0], scale: [1, 1, 1],
@@ -4418,15 +4656,33 @@ const STARTER = {
         { when: 'click', do: 'playSound', args: { value: 'coin', volume: 0.6 } },
         { when: 'click', do: 'setColor', args: { value: '#ffb020' } }
       ],
-      script: '// Spin + mission demo\nK.on("tick", function (dt) {\n  me.rotate(0, dt * 1.2, 0);\n});\n\nme.on("click", function () {\n  K.log("Cube clicked, mission complete!");\n});'
+      script: 'K.on("tick", function (dt) {\n  me.rotate(0, dt * 1.2, 0);\n});'
     },
     { id: 'o_spawn', name: 'SpawnPoint', type: 'spawn', parent: null, pos: [0, 0.1, 6], rot: [0, 0, 0], scale: [1, 1, 1],
       visible: true, props: {}, rules: [], script: '' },
     { id: 'o_ui', name: 'HUDText', type: 'uitext', parent: null, pos: [0, 0, 0], rot: [0, 0, 0], scale: [1, 1, 1],
-      visible: true, props: { x: 22, y: 20, w: 360, h: 36, text: 'KEngine1 - Click the green cube!', fontSize: 18, color: '#ffffff', bg: 'transparent', font: 'Segoe UI, Arial' },
+      visible: true, props: {
+        x: 22, y: 20, w: 400, h: 36,
+        text: 'KEngine1 - Click the green cube!',
+        fontFamily: 'Segoe UI, Arial',
+        fontSize: 18, fontWeight: 'bold', fontStyle: 'normal',
+        color: '#ffffff', bg: 'transparent',
+        textAlign: 'left', letterSpacing: 0, lineHeight: 1.4,
+        padding: '4px 8px',
+        opacity: 1, fadeInDuration: 300, fadeOutDuration: 300
+      },
       rules: [], script: '' },
     { id: 'o_missionbtn', name: 'MissionButton', type: 'uibutton', parent: null, pos: [0, 0, 0], rot: [0, 0, 0], scale: [1, 1, 1],
-      visible: true, props: { x: 22, y: 60, w: 220, h: 44, text: 'Save Game', bg: '#22c98a', color: '#04140d', fontSize: 15, radius: 8 },
+      visible: true, props: {
+        x: 22, y: 60, w: 220, h: 44,
+        text: 'Save Game',
+        bg: '#22c98a', color: '#04140d',
+        fontFamily: 'Segoe UI, Arial',
+        fontSize: 15, fontWeight: 'bold', fontStyle: 'normal',
+        textAlign: 'center', letterSpacing: 0, lineHeight: 1.4,
+        padding: '4px 8px', radius: 8,
+        opacity: 1, fadeInDuration: 300, fadeOutDuration: 300
+      },
       rules: [
         { when: 'click', do: 'saveGame', args: {} },
         { when: 'click', do: 'playSound', args: { value: 'powerup', volume: 0.6 } }
