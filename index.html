@@ -6,24 +6,11 @@
 <title>KEngine1</title>
 <style>
   :root{
-    --bg:#383838;
-    --bg-dark:#282828;
-    --bg-darker:#1e1e1e;
-    --header:#3c3c3c;
-    --tab:#3c3c3c;
-    --tab-active:#4a4a4a;
-    --line:#232323;
-    --line2:#1c1c1c;
-    --txt:#d4d4d4;
-    --dim:#8c8c8c;
-    --accent:#3d7ebd;
-    --accent-h:#4a90d9;
-    --play:#4a8a3c;
-    --play-h:#5aa04a;
-    --selected:#2c5d87;
-    --input:#2d2d2d;
-    --warn:#d6a84a;
-    --danger:#b04a4a;
+    --bg:#383838;--bg-dark:#282828;--bg-darker:#1e1e1e;--header:#3c3c3c;
+    --tab:#3c3c3c;--tab-active:#4a4a4a;--line:#232323;--line2:#1c1c1c;
+    --txt:#d4d4d4;--dim:#8c8c8c;--accent:#3d7ebd;--accent-h:#4a90d9;
+    --play:#4a8a3c;--play-h:#5aa04a;--selected:#2c5d87;--input:#2d2d2d;
+    --warn:#d6a84a;--danger:#b04a4a;
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:var(--bg-darker);color:var(--txt);
@@ -46,7 +33,6 @@
   .screen{position:fixed;inset:0}
   .hidden{display:none !important}
   .spacer{flex:1}
-
   #menu{background:linear-gradient(180deg,#2a2a2a,#1e1e1e);display:flex;align-items:center;justify-content:center;z-index:50}
   .menu-box{width:560px;max-height:88vh;overflow:auto;background:#2d2d2d;border:1px solid #1a1a1a;
     border-radius:4px;padding:24px 26px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
@@ -60,7 +46,6 @@
   .proj .nm{flex:1;cursor:pointer}
   .proj .nm:hover{color:var(--accent-h)}
   .proj small{color:var(--dim);display:block;font-size:10px;margin-top:2px}
-
   #editor{display:flex;flex-direction:column;z-index:10;background:var(--bg)}
   #topbar{display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--header);
     border-bottom:1px solid var(--line2);flex-wrap:nowrap;height:32px}
@@ -72,18 +57,15 @@
   #topbar .playgroup button:last-child{border-radius:0 2px 2px 0;border-right:1px solid var(--line)}
   #topbar .playgroup button.good{min-width:44px;font-weight:700}
   #projectName{width:170px;height:22px;padding:2px 6px;font-size:11px}
-
   #body{flex:1;display:flex;min-height:0}
   #left{width:260px;flex:0 0 260px;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;min-width:0}
   #center{flex:1 1 0;display:flex;flex-direction:column;min-width:0;background:var(--bg-darker)}
   #right{width:320px;flex:0 0 320px;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;min-width:0}
-  .splitter{flex:0 0 4px;background:var(--line2);cursor:col-resize;position:relative;z-index:5;
-    transition:background .12s}
+  .splitter{flex:0 0 4px;background:var(--line2);cursor:col-resize;position:relative;z-index:5;transition:background .12s}
   .splitter:hover,.splitter.dragging{background:var(--accent-h)}
   .splitter::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
     width:2px;height:30px;background:#5a5a5a;border-radius:1px;pointer-events:none}
   .splitter:hover::after,.splitter.dragging::after{background:#eaeaea}
-
   .tabs{display:flex;border-bottom:1px solid var(--line2);background:var(--header);flex-wrap:wrap;min-height:26px}
   .tab{flex:1;border:0;border-radius:0;background:transparent;color:var(--dim);padding:5px 4px;
     font-size:11px;min-width:56px;height:26px;line-height:1}
@@ -91,7 +73,6 @@
   .tab.active{color:#fff;background:var(--bg);box-shadow:inset 0 -2px 0 var(--accent-h)}
   .tabpane{flex:1;overflow:auto;padding:6px;min-height:0}
   .tabpane.slim{padding:0}
-
   #viewport{flex:1;position:relative;min-height:0;background:#1e1e1e}
   #gl{display:block;width:100%;height:100%}
   #uilayer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
@@ -103,18 +84,15 @@
   #hud button{padding:2px 7px;font-size:10px;height:20px;border-radius:2px;cursor:pointer}
   #stats{position:absolute;right:6px;top:6px;color:var(--dim);font-size:10px;text-align:right;
     background:rgba(30,30,30,.85);padding:2px 6px;border-radius:2px;border:1px solid var(--line2)}
-
   #sceneHeader{display:flex;align-items:center;gap:0;background:var(--header);
     border-bottom:1px solid var(--line2);height:26px}
   #sceneHeader .tab{flex:0 0 auto;padding:5px 14px;border-radius:0;box-shadow:none;background:var(--header)}
   #sceneHeader .tab.active{background:var(--bg-darker);box-shadow:inset 0 -2px 0 var(--accent-h);color:#fff}
   #sceneHeader .path{margin-left:auto;color:var(--dim);font-size:10px;padding-right:8px}
-
   .row{display:flex;gap:5px;align-items:center;margin-bottom:5px}
   .row > *{min-width:0}
   .row label{color:var(--dim);font-size:11px;flex:0 0 76px}
   .row input[type=checkbox]{width:auto;accent-color:var(--accent-h)}
-
   .sec{border:1px solid var(--line2);border-radius:2px;margin-bottom:6px;background:#2d2d2d;overflow:hidden}
   .sec > h4{margin:0;padding:5px 8px;background:var(--header);font-size:10px;letter-spacing:.6px;
     color:#c8c8c8;text-transform:uppercase;border-bottom:1px solid var(--line2);cursor:pointer;user-select:none;
@@ -123,7 +101,6 @@
   .sec.collapsed > h4::before{transform:rotate(-90deg)}
   .sec.collapsed > .inner{display:none}
   .sec > .inner{padding:7px 8px}
-
   .tree{list-style:none;margin:0;padding:0;font-size:11px}
   .tree li{padding:2px 6px;cursor:pointer;display:flex;align-items:center;gap:6px;border-radius:2px;line-height:20px}
   .tree li:hover{background:#2f2f2f}
@@ -132,22 +109,18 @@
     padding:0 4px;line-height:14px}
   .tree li .eye{margin-left:auto;color:var(--dim);font-size:10px;padding-left:6px}
   .tree li .player{color:#7ee0a8;font-size:9px;font-weight:700}
-
   .card{border:1px solid var(--line2);border-radius:2px;padding:6px 7px;margin-bottom:4px;
     background:#2d2d2d;cursor:pointer}
   .card:hover{border-color:var(--accent);background:#333}
   .card b{display:block;font-size:11px;color:#eaeaea}
   .card small{color:var(--dim);font-size:10px}
-
   .rule{border:1px solid var(--line2);border-radius:2px;padding:6px;margin-bottom:5px;background:#2d2d2d}
   .rule .hd{display:flex;align-items:center;gap:5px;margin-bottom:5px}
   .rule .hd b{font-size:10px;color:var(--warn);flex:1;letter-spacing:.5px;text-transform:uppercase}
   .rule select,.rule input{margin-bottom:3px}
-
   .mission{border:1px solid var(--line2);border-radius:2px;padding:7px;margin-bottom:5px;background:#2d2d2d}
   .mission .hd{display:flex;align-items:center;gap:5px;margin-bottom:5px}
   .mission .hd b{font-size:11px;color:#7ee0a8;flex:1}
-
   #modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:80;display:flex;
     align-items:center;justify-content:center;padding:24px}
   #modal .box{width:min(1000px,96vw);height:min(760px,92vh);display:flex;flex-direction:column;
@@ -157,23 +130,18 @@
   #modal .box header b{flex:1;font-size:12px}
   #modal .box .content{flex:1;overflow:auto;padding:10px}
   #exportCode{width:100%;height:100%;min-height:420px}
-
   .hint{color:var(--dim);font-size:10px;margin:3px 0;line-height:1.35}
   #statusbar{height:22px;background:var(--header);border-top:1px solid var(--line2);
     display:flex;align-items:center;padding:0 8px;font-size:10px;color:var(--dim);gap:8px}
   #statusbar .dot{color:var(--play)}
   #statusbar .sep{color:#555}
-
-  /* Draggable UI overlay in editor viewport */
   .ui-el-editor{transition:none}
-  .ui-el-editor.selected{outline:1px dashed #4a90d9;outline-offset:3px;
-    box-shadow:0 0 0 1px rgba(74,144,217,.4)}
+  .ui-el-editor.selected{outline:1px dashed #4a90d9;outline-offset:3px;box-shadow:0 0 0 1px rgba(74,144,217,.4)}
   .ui-el-editor .ui-resize-handle{position:absolute;right:-7px;bottom:-7px;width:14px;height:14px;
     background:#4a90d9;border:1px solid #fff;border-radius:2px;cursor:nwse-resize;z-index:20;
     box-shadow:0 1px 4px rgba(0,0,0,.4)}
   .ui-el-editor .ui-el-label{position:absolute;left:0;top:-18px;background:#4a90d9;color:#fff;
     font-size:9px;padding:1px 5px;border-radius:2px 2px 0 0;pointer-events:none;white-space:nowrap}
-
   ::-webkit-scrollbar{width:9px;height:9px}
   ::-webkit-scrollbar-thumb{background:#3c3c3c;border-radius:0}
   ::-webkit-scrollbar-thumb:hover{background:#4a4a4a}
@@ -188,6 +156,7 @@
     <p class="sub">Browser 3D game engine. Build, script, test, export.</p>
     <button id="btnNew" class="primary">New Game</button>
     <button id="btnContinue">Continue (last project)</button>
+    <button id="btnPasteHTML">Paste Game HTML to Edit</button>
     <div id="projectList"></div>
     <div class="row" style="margin-top:12px">
       <button id="btnImport">Import .keng file</button>
@@ -195,6 +164,7 @@
     </div>
     <input type="file" id="fileImport" accept=".keng,.json" hidden>
     <p class="hint">Projects are stored in the browser IndexedDB database, and can be exported as .keng files or synced to any HTTP endpoint you provide in Cloud Sync Settings.</p>
+    <p class="hint">Paste Game HTML: paste the contents of any KEngine1 exported HTML file and it will load as a fully editable project.</p>
   </div>
 </div>
 
@@ -1125,6 +1095,27 @@ function KRuntime(THREE, CANNON, deps, opts) {
     }
   }
 
+  /* ---------- NEW: obstacle ray check for the player ---------- */
+  function castObstacleRay(from, to, excludeBody) {
+    if (!R.world) return false;
+    var ray = new CANNON.Ray(new CANNON.Vec3(from.x, from.y, from.z),
+                             new CANNON.Vec3(to.x, to.y, to.z));
+    var result = new CANNON.RaycastResult();
+    ray.intersectWorld(R.world, { mode: CANNON.Ray.CLOSEST, result: result, skipBackfaces: true });
+    if (!result.hasHit) return false;
+    if (excludeBody && result.body === excludeBody) return false;
+    return true;
+  }
+
+  function getPlayerHalfExtent(p) {
+    if (p && p.body && p.body.shapes && p.body.shapes.length) {
+      var s = p.body.shapes[0];
+      if (s.halfExtents) return Math.max(s.halfExtents.x, s.halfExtents.z);
+      if (s.radius) return s.radius;
+    }
+    return 0.5;
+  }
+
   function initPlayer(settings) {
     R.settings = settings;
     if (!settings.player || !settings.player.enabled) return;
@@ -1172,7 +1163,8 @@ function KRuntime(THREE, CANNON, deps, opts) {
         isObjectPlayer: true,
         currentClip: null,
         vy: 0,
-        cam: cam
+        cam: cam,
+        radius: 0.5
       };
     } else {
       var body = null;
@@ -1194,7 +1186,8 @@ function KRuntime(THREE, CANNON, deps, opts) {
         height: 1.6,
         isObjectPlayer: false,
         start: start,
-        cam: cam
+        cam: cam,
+        radius: 0.5
       };
       if (!R.world) R.camera.position.set(start.x, start.y + 1.6, start.z);
     }
@@ -1246,6 +1239,45 @@ function KRuntime(THREE, CANNON, deps, opts) {
     var spd = p.speed * (running ? 1.8 : 1) * (moving ? 1 : 0);
 
     if (p.isObjectPlayer) {
+      /* ---------- obstacle check before applying velocity ---------- */
+      if (p.body && moving && !p.fly) {
+        var halfExtent = getPlayerHalfExtent(p);
+        var lookAhead = halfExtent + 0.2;
+        var bodyPos = p.body.position;
+        var startOffset = halfExtent + 0.02;
+
+        var blockedX = false, blockedZ = false;
+        if (dx !== 0) {
+          var originX = bodyPos.x + Math.sign(dx) * startOffset;
+          blockedX = castObstacleRay(
+            { x: originX, y: bodyPos.y, z: bodyPos.z },
+            { x: originX + Math.sign(dx) * lookAhead, y: bodyPos.y, z: bodyPos.z },
+            p.body
+          );
+        }
+        if (dz !== 0) {
+          var originZ = bodyPos.z + Math.sign(dz) * startOffset;
+          blockedZ = castObstacleRay(
+            { x: bodyPos.x, y: bodyPos.y, z: originZ },
+            { x: bodyPos.x, y: bodyPos.y, z: originZ + Math.sign(dz) * lookAhead },
+            p.body
+          );
+        }
+        /* zero the blocked axis, slide along the free axis */
+        if (blockedX) dx = 0;
+        if (blockedZ) dz = 0;
+        /* if blocked on the diagonal, try full slide along one axis */
+        if (blockedX && blockedZ) {
+          var canSlideX = false, canSlideZ = false;
+          if (fwd || strafe) {
+            if (Math.abs(fwd) > Math.abs(strafe)) { canSlideX = false; canSlideZ = true; }
+            else { canSlideX = true; canSlideZ = false; }
+          }
+          if (canSlideX) dz = 0;
+          if (canSlideZ) dx = 0;
+        }
+      }
+
       if (p.body) {
         p.body.velocity.x = dx * spd;
         p.body.velocity.z = dz * spd;
@@ -1919,13 +1951,13 @@ function defaultDef(type) {
     script: ''
   };
   switch (type) {
-    case 'part': d.pos = [0, 0.5, 0]; d.props = { color: '#8fa3b8', material: 'standard', metalness: 0.1, roughness: 0.6, opacity: 1 }; break;
-    case 'sphere': d.pos = [0, 0.5, 0]; d.props = { color: '#c8d2dc', material: 'standard', metalness: 0.2, roughness: 0.4, opacity: 1 }; break;
-    case 'cylinder': d.pos = [0, 0.5, 0]; d.props = { color: '#7fb2a8', material: 'standard', metalness: 0.1, roughness: 0.5, opacity: 1 }; break;
-    case 'cone': d.pos = [0, 0.5, 0]; d.props = { color: '#d3a05f', material: 'standard', metalness: 0.1, roughness: 0.6, opacity: 1 }; break;
-    case 'torus': d.pos = [0, 0.8, 0]; d.props = { color: '#b58fd0', material: 'standard', metalness: 0.4, roughness: 0.3, opacity: 1 }; break;
-    case 'capsule': d.pos = [0, 0.8, 0]; d.props = { color: '#8fb8d0', material: 'standard', metalness: 0.1, roughness: 0.5, opacity: 1 }; break;
-    case 'wedge': d.pos = [0, 0.5, 0]; d.props = { color: '#d08f8f', material: 'standard', metalness: 0.1, roughness: 0.6, opacity: 1 }; break;
+    case 'part': d.pos = [0, 0.5, 0]; d.props = { color: '#8fa3b8', material: 'standard', metalness: 0.1, roughness: 0.6, opacity: 1, physics: 'static' }; break;
+    case 'sphere': d.pos = [0, 0.5, 0]; d.props = { color: '#c8d2dc', material: 'standard', metalness: 0.2, roughness: 0.4, opacity: 1, physics: 'static' }; break;
+    case 'cylinder': d.pos = [0, 0.5, 0]; d.props = { color: '#7fb2a8', material: 'standard', metalness: 0.1, roughness: 0.5, opacity: 1, physics: 'static' }; break;
+    case 'cone': d.pos = [0, 0.5, 0]; d.props = { color: '#d3a05f', material: 'standard', metalness: 0.1, roughness: 0.6, opacity: 1, physics: 'static' }; break;
+    case 'torus': d.pos = [0, 0.8, 0]; d.props = { color: '#b58fd0', material: 'standard', metalness: 0.4, roughness: 0.3, opacity: 1, physics: 'static' }; break;
+    case 'capsule': d.pos = [0, 0.8, 0]; d.props = { color: '#8fb8d0', material: 'standard', metalness: 0.1, roughness: 0.5, opacity: 1, physics: 'static' }; break;
+    case 'wedge': d.pos = [0, 0.5, 0]; d.props = { color: '#d08f8f', material: 'standard', metalness: 0.1, roughness: 0.6, opacity: 1, physics: 'static' }; break;
     case 'plane': d.scale = [40, 1, 40]; d.props = { color: '#3b4652', material: 'standard', roughness: 0.9, metalness: 0, physics: 'static', castShadow: false }; break;
     case 'text': d.pos = [0, 2, 0]; d.props = { text: 'Hello KEngine1', size: 1, color: '#ffffff', bg: 'transparent' }; break;
     case 'light': d.pos = [4, 8, 4]; d.props = { light: 'point', color: '#ffffff', intensity: 20, distance: 0, shadows: true }; break;
@@ -2358,7 +2390,6 @@ function refreshUILayer() {
       n.appendChild(lbl);
     }
 
-    // Drag to move (any UI element)
     n.addEventListener('mousedown', function (ev) {
       if (state.playing) return;
       if (ev.target && ev.target.dataset && ev.target.dataset.handle === 'resize') return;
@@ -2368,7 +2399,6 @@ function refreshUILayer() {
       dragUIElement(o, 'move', ev);
     });
 
-    // Resize handle
     if (isSelected) {
       var handle = el('div', 'ui-resize-handle');
       handle.dataset.handle = 'resize';
@@ -2530,6 +2560,31 @@ function buildInspector(obj) {
   }));
   pane.appendChild(s1);
 
+  /* Collision button for parts and shapes */
+  var collisionTypes = ['part','sphere','cylinder','cone','torus','capsule','wedge','plane'];
+  if (collisionTypes.indexOf(def.type) >= 0) {
+    var scol = section('Collision');
+    var hasCol = props.physics === 'static' || props.physics === 'dynamic';
+    scol.appendChild(checkField('Has Collision (blocks the player)', hasCol, function (v) {
+      pushUndo();
+      if (v) {
+        props.physics = 'static';
+      } else {
+        props.physics = 'none';
+      }
+      refreshTree();
+      buildInspector(obj);
+    }));
+    scol.appendChild(el('p', 'hint', 'When checked, this part gets a physics collider. The player and other dynamic bodies will collide with it. Uncheck for decor that you can walk through.'));
+    if (hasCol) {
+      scol.appendChild(selectField('Type', props.physics, [
+        { label: 'Static (never moves)', value: 'static' },
+        { label: 'Dynamic (falls, pushed)', value: 'dynamic' }
+      ], function (v) { props.physics = v; buildInspector(obj); }));
+    }
+    pane.appendChild(scol);
+  }
+
   var sp = section('Player');
   sp.appendChild(checkField('Make this the Player', !!props.isPlayer, function (v) {
     if (v) {
@@ -2573,24 +2628,6 @@ function buildInspector(obj) {
     var topLeftBtn = el('button', null, 'Snap to Top-Left');
     topLeftBtn.onclick = function () { props.x = 12; props.y = 12; refreshUILayer(); buildInspector(obj); };
     sui.appendChild(topLeftBtn);
-    var topRightBtn = el('button', null, 'Snap to Top-Right');
-    topRightBtn.onclick = function () {
-      var vp = $('#viewport');
-      props.x = Math.max(0, (vp.clientWidth || 800) - (props.w || 200) - 12);
-      props.y = 12;
-      refreshUILayer();
-      buildInspector(obj);
-    };
-    sui.appendChild(topRightBtn);
-    var bottomLeftBtn = el('button', null, 'Snap to Bottom-Left');
-    bottomLeftBtn.onclick = function () {
-      var vp = $('#viewport');
-      props.x = 12;
-      props.y = Math.max(0, (vp.clientHeight || 600) - (props.h || 48) - 12);
-      refreshUILayer();
-      buildInspector(obj);
-    };
-    sui.appendChild(bottomLeftBtn);
     pane.appendChild(sui);
   }
 
@@ -2723,9 +2760,9 @@ function buildInspector(obj) {
     pane.appendChild(su);
   }
 
-  var sph = section('Physics');
+  var sph = section('Physics (advanced)');
   sph.appendChild(selectField('Mode', props.physics || 'none', [
-    { label: 'None', value: 'none' }, { label: 'Static (solid wall)', value: 'static' }, { label: 'Dynamic (falls, pushed)', value: 'dynamic' }
+    { label: 'None (no collision)', value: 'none' }, { label: 'Static (solid wall)', value: 'static' }, { label: 'Dynamic (falls, pushed)', value: 'dynamic' }
   ], function (v) { props.physics = v; }));
   sph.appendChild(field('Mass', props.mass || 1, function (v) { props.mass = v; }, 'number'));
   pane.appendChild(sph);
@@ -3893,6 +3930,57 @@ function renderProjectList() {
 }
 
 /* =====================================================================
+   SECTION 16b - PASTE HTML IMPORT
+   ===================================================================== */
+function extractProjectFromHTML(html) {
+  var marker = 'const PROJECT = ';
+  var idx = html.indexOf(marker);
+  if (idx < 0) return null;
+  var start = html.indexOf('{', idx);
+  if (start < 0) return null;
+  var depth = 0;
+  var inString = false;
+  var escape = false;
+  for (var i = start; i < html.length; i++) {
+    var c = html[i];
+    if (escape) { escape = false; continue; }
+    if (c === '\\') { escape = true; continue; }
+    if (c === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) {
+        try { return JSON.parse(html.slice(start, i + 1)); }
+        catch (e) { return null; }
+      }
+    }
+  }
+  return null;
+}
+
+function importGameHTML() {
+  var paste = prompt('Paste the contents of a KEngine1 exported HTML file below (or a .keng file). The editor will extract the project and load it so you can keep editing.');
+  if (!paste) return;
+  var project = null;
+  /* try to parse as raw JSON first */
+  try { project = JSON.parse(paste); } catch (e) {}
+  if (!project || !project.objects) {
+    project = extractProjectFromHTML(paste);
+  }
+  if (!project || !project.objects) {
+    alert('Could not find a KEngine1 project inside the pasted text. Make sure you paste the entire HTML file (or the raw project JSON / .keng file).');
+    return;
+  }
+  state.projectId = null;
+  state.undoStack = [];
+  state.redoStack = [];
+  applyProject(project);
+  showEditor();
+  setStatus('Imported project: ' + (project.name || 'Untitled Game'));
+}
+
+/* =====================================================================
    SECTION 17 - UNDO / REDO
    ===================================================================== */
 function pushUndo() {
@@ -4125,6 +4213,7 @@ $('#btnContinue').onclick = function () {
     loadProjectById(id).then(function (ok) { if (ok) showEditor(); else alert('Could not load the last project.'); });
   });
 };
+$('#btnPasteHTML').onclick = importGameHTML;
 $('#btnImport').onclick = function () { $('#fileImport').click(); };
 $('#fileImport').onchange = function (e) {
   var f = e.target.files[0];
@@ -4155,7 +4244,6 @@ window.addEventListener('keydown', function (e) {
   var tag = (e.target.tagName || '').toLowerCase();
   if (tag === 'input' || tag === 'textarea') return;
 
-  // Arrow keys nudge selected UI element
   if (state.selected && state.selected.userData.def && state.selected.userData.def.type.indexOf('ui') === 0) {
     var def = state.selected.userData.def;
     var p = def.props;
@@ -4250,7 +4338,7 @@ const STARTER = {
     { id: 'o_block', name: 'BlueBlock', type: 'part', parent: null, pos: [-3, 0.5, 0], rot: [0, 0, 0], scale: [2, 1, 2],
       visible: true, props: { color: '#4a9eff', material: 'standard', metalness: 0.2, roughness: 0.4, opacity: 1, physics: 'static' }, rules: [], script: '' },
     { id: 'o_spin', name: 'SpinningCube', type: 'part', parent: null, pos: [3, 1.5, 0], rot: [0, 0, 0], scale: [1, 1, 1],
-      visible: true, props: { color: '#22c98a', material: 'neon', emissive: '#22c98a', emissiveIntensity: 1.6, opacity: 1 },
+      visible: true, props: { color: '#22c98a', material: 'neon', emissive: '#22c98a', emissiveIntensity: 1.6, opacity: 1, physics: 'static' },
       rules: [
         { when: 'click', do: 'completeMission', args: { value: 'Touch The Green Cube' }, key: 'Space', varName: '' },
         { when: 'click', do: 'playSound', args: { value: 'coin', volume: 0.6 } },
