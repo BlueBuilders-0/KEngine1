@@ -933,7 +933,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
       var size = new THREE.Vector3(); box.getSize(size);
       var maxDim = Math.max(size.x, size.y, size.z) || 1;
       if (rec.def.props.autoscale !== false && maxDim > 4) root.scale.setScalar(2 / maxDim);
-      if (rec.def.type === 'character') root.rotation.y = Math.PI;
+      if (rec.def.props.flipModel) root.rotation.y = Math.PI;
       rec.holder.add(root);
       if (gltf.animations && gltf.animations.length) {
         rec.mixer = new THREE.AnimationMixer(root);
@@ -2007,7 +2007,7 @@ function defaultDef(type) {
     case 'light': d.pos = [4, 8, 4]; d.props = { light: 'point', color: '#ffffff', intensity: 20, distance: 0, shadows: true }; break;
     case 'camera': d.pos = [0, 3, 10]; d.props = { fov: 60, near: 0.1, far: 4000, main: false }; d.name = 'Camera'; break;
     case 'model': d.props = { url: '', autoscale: true, physics: 'none' }; d.name = 'Model'; break;
-    case 'character': d.pos = [0, 0, 0]; d.props = { url: MODEL_SOURCES[0].u, autoscale: true, clip: '', physics: 'none' }; d.name = 'Character'; break;
+    case 'character': d.pos = [0, 0, 0]; d.props = { url: MODEL_SOURCES[0].u, autoscale: true, clip: '', flipModel: false, physics: 'none' }; d.name = 'Character'; break;
     case 'particles': d.pos = [0, 2, 0]; d.props = { count: 400, size: 0.09, spread: 5, speed: 1, color: '#7fd8ff' }; d.name = 'Particles'; break;
     case 'sound': d.props = { synth: 'beep', src: '', volume: 0.6, autoplay: false }; d.name = 'Sound'; break;
     case 'spawn': d.pos = [0, 0.1, 0]; d.props = {}; d.name = 'SpawnPoint'; break;
@@ -2200,7 +2200,7 @@ function loadEditorModel(obj, holder, props, type) {
     box.getSize(size);
     var maxDim = Math.max(size.x, size.y, size.z) || 1;
     if (props.autoscale !== false && maxDim > 4) root.scale.setScalar(2 / maxDim);
-    if (type === 'character') root.rotation.y = Math.PI;
+    if (props.flipModel) root.rotation.y = Math.PI;
     holder.add(root);
     obj.userData.loadedModel = root;
     obj.userData.animations = gltf.animations || [];
@@ -2745,6 +2745,10 @@ function buildInspector(obj) {
     var sm = section('Model');
     sm.appendChild(field('URL (.glb / .gltf)', props.url || '', function (v) { props.url = v; rebuildObject(obj); }));
     sm.appendChild(checkField('Auto scale to 2 units', props.autoscale !== false, function (v) { props.autoscale = v; rebuildObject(obj); }));
+    if (def.type === 'character') {
+      sm.appendChild(checkField('Flip model 180° (turn to face away from camera)', !!props.flipModel, function (v) { props.flipModel = v; rebuildObject(obj); }));
+      sm.appendChild(el('p', 'hint', 'Turn this ON if the character is facing the camera in third-person view (their back should face you). Turn OFF if the character walks backwards.'));
+    }
     var anims = obj.userData.animations || [];
     if (anims.length) {
       sm.appendChild(selectField('Animation clip', props.clip || '', [{ label: '(default)', value: '' }].concat(
@@ -4403,7 +4407,7 @@ const STARTER = {
     { id: 'o_player', name: 'PlayerCharacter', type: 'character', parent: null, pos: [0, 0, 6], rot: [0, 0, 0], scale: [1, 1, 1],
       visible: true,
       props: { url: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/Soldier.glb',
-               autoscale: true, clip: '', physics: 'dynamic', isPlayer: true },
+               autoscale: true, clip: '', flipModel: true, physics: 'dynamic', isPlayer: true },
       rules: [], script: '// Soldier follows your mouse when standing still.' },
     { id: 'o_block', name: 'BlueBlock', type: 'part', parent: null, pos: [-3, 0.5, 0], rot: [0, 0, 0], scale: [2, 1, 2],
       visible: true, props: { color: '#4a9eff', material: 'standard', metalness: 0.2, roughness: 0.4, opacity: 1, physics: 'static' }, rules: [], script: '' },
