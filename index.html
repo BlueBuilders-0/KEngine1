@@ -213,6 +213,7 @@
           <button data-tool="snap">Snap: off</button>
           <button data-tool="grid">Grid: on</button>
           <button data-tool="focus">Focus</button>
+          <button data-tool="color">Color</button>
           <button data-tool="del">Delete</button>
           <button data-tool="dup">Duplicate</button>
           <button data-tool="third">3rd Person</button>
@@ -894,7 +895,14 @@ function KRuntime(THREE, CANNON, deps, opts) {
       body.position.set(obj.position.x, obj.position.y, obj.position.z);
       body.quaternion.setFromEuler(obj.rotation.x, obj.rotation.y, obj.rotation.z);
       body.linearDamping = 0.05;
-      if (props.isPlayer) { body.fixedRotation = true; body.updateMassProperties(); body.linearDamping = 0; }
+      if (props.isPlayer) {
+        body.fixedRotation = true;
+        body.updateMassProperties();
+        body.linearDamping = 0;
+        body.allowSleep = false;
+        body.sleepSpeedLimit = 0;
+        body.sleepTimeLimit = 0;
+      }
       R.world.addBody(body);
       rec.body = body;
       R.bodies.push(rec);
@@ -1102,8 +1110,10 @@ function KRuntime(THREE, CANNON, deps, opts) {
                              new CANNON.Vec3(to.x, to.y, to.z));
     var result = new CANNON.RaycastResult();
     ray.intersectWorld(R.world, { mode: CANNON.Ray.CLOSEST, result: result, skipBackfaces: true });
-    if (!result.hasHit) return false;
-    if (excludeBody && result.body === excludeBody) return false;
+    if (!result.hasHit || !result.body) return false;
+    if (result.body === excludeBody) return false;
+    if (result.body.collisionResponse === false) return false;
+    if (result.distance != null && result.distance < 0.05) return false;
     return true;
   }
 
@@ -1148,6 +1158,9 @@ function KRuntime(THREE, CANNON, deps, opts) {
         body.fixedRotation = true;
         body.updateMassProperties();
         body.linearDamping = 0;
+        body.allowSleep = false;
+        body.sleepSpeedLimit = 0;
+        body.sleepTimeLimit = 0;
         R.world.addBody(body);
         playerRec.body = body;
         R.bodies.push(playerRec);
@@ -1174,6 +1187,9 @@ function KRuntime(THREE, CANNON, deps, opts) {
         body.fixedRotation = true;
         body.updateMassProperties();
         body.linearDamping = 0;
+        body.allowSleep = false;
+        body.sleepSpeedLimit = 0;
+        body.sleepTimeLimit = 0;
         R.world.addBody(body);
       }
       R.player = {
@@ -1263,22 +1279,15 @@ function KRuntime(THREE, CANNON, deps, opts) {
             p.body
           );
         }
+        /* If BOTH axes are blocked, do not freeze - let the physics engine slide us out */
+        if (blockedX && blockedZ) { blockedX = false; blockedZ = false; }
         /* zero the blocked axis, slide along the free axis */
         if (blockedX) dx = 0;
         if (blockedZ) dz = 0;
-        /* if blocked on the diagonal, try full slide along one axis */
-        if (blockedX && blockedZ) {
-          var canSlideX = false, canSlideZ = false;
-          if (fwd || strafe) {
-            if (Math.abs(fwd) > Math.abs(strafe)) { canSlideX = false; canSlideZ = true; }
-            else { canSlideX = true; canSlideZ = false; }
-          }
-          if (canSlideX) dz = 0;
-          if (canSlideZ) dx = 0;
-        }
       }
 
       if (p.body) {
+        p.body.wakeUp();
         p.body.velocity.x = dx * spd;
         p.body.velocity.z = dz * spd;
         if (p.fly) p.body.velocity.y = ((input.keys['Space'] ? 1 : 0) - (input.keys['ControlLeft'] ? 1 : 0)) * spd;
@@ -1360,6 +1369,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
       }
     } else {
       if (p.body) {
+        p.body.wakeUp();
         p.body.velocity.x = dx * spd;
         p.body.velocity.z = dz * spd;
         if (p.fly) p.body.velocity.y = ((input.keys['Space'] ? 1 : 0) - (input.keys['ControlLeft'] ? 1 : 0)) * spd;
@@ -1515,16 +1525,34 @@ function KRuntime(THREE, CANNON, deps, opts) {
     if (rec) fire('click', rec, { point: hits[0].point, ui: false });
   }
 
+  function isTypingTarget(t) {
+    if (!t) return false;
+    var tag = (t.tagName || '').toLowerCase();
+    return tag === 'input' || tag === 'textarea' || tag === 'select' || t.isContentEditable === true;
+  }
+
   R.bindInput = function (dom, canvas) {
+    R.unbindInput();
+    var L = R._listeners = [];
+    function add(target, type, fn, opts) {
+      target.addEventListener(type, fn, opts);
+      L.push([target, type, fn, opts]);
+    }
+
     var lastMX = 0, lastMY = 0;
-    window.addEventListener('keydown', function (e) {
+
+    add(window, 'keydown', function (e) {
+      if (isTypingTarget(e.target)) return;
       input.keys[e.code] = true;
       fire('key', null, { code: e.code, key: e.key });
-      if (e.code === 'Space') e.preventDefault();
+      if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'ArrowDown' ||
+          e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+        e.preventDefault();
+      }
     });
-    window.addEventListener('keyup', function (e) { input.keys[e.code] = false; });
+    add(window, 'keyup', function (e) { input.keys[e.code] = false; });
 
-    dom.addEventListener('mousemove', function (e) {
+    add(dom, 'mousemove', function (e) {
       var mx = e.clientX, my = e.clientY;
       if (input.mouse.locked) {
         input.mouse.dx += e.movementX || 0;
@@ -1538,41 +1566,56 @@ function KRuntime(THREE, CANNON, deps, opts) {
       input.mouse.y = -(my / window.innerHeight) * 2 + 1;
     });
 
-    dom.addEventListener('mousedown', function (e) {
+    add(dom, 'mousedown', function (e) {
       if (e.button === 0) input.mouse.down = true;
     });
-    window.addEventListener('mouseup', function () { input.mouse.down = false; });
-    dom.addEventListener('click', function (e) {
+    add(window, 'mouseup', function () { input.mouse.down = false; });
+    add(dom, 'click', function (e) {
       if (!input.mouse.locked) raycastClick(e);
     });
-    dom.addEventListener('contextmenu', function (e) {
+    add(dom, 'contextmenu', function (e) {
       if (input.mouse.locked) e.preventDefault();
     });
-    dom.addEventListener('touchstart', function (e) {
+    add(dom, 'touchstart', function (e) {
       for (var i = 0; i < e.changedTouches.length; i++) {
         var t = e.changedTouches[i];
         input.touch[t.identifier] = { x: t.clientX, y: t.clientY };
       }
       raycastClick(e.changedTouches[0]);
     }, { passive: true });
-    dom.addEventListener('touchend', function (e) {
+    add(dom, 'touchend', function (e) {
       for (var i = 0; i < e.changedTouches.length; i++) delete input.touch[e.changedTouches[i].identifier];
     }, { passive: true });
-    dom.addEventListener('wheel', function (e) {
+    add(dom, 'wheel', function (e) {
       input.wheel = (input.wheel || 0) + (e.deltaY > 0 ? 1 : -1);
       if (input.mouse.locked) e.preventDefault();
     }, { passive: false });
 
     if (opts.pointerLock !== false && canvas) {
-      canvas.addEventListener('click', function () {
+      add(canvas, 'click', function () {
         if (R.player && !input.mouse.locked && canvas.requestPointerLock) {
           try { canvas.requestPointerLock(); } catch (e) {}
         }
       });
-      document.addEventListener('pointerlockchange', function () {
+      add(document, 'pointerlockchange', function () {
         input.mouse.locked = document.pointerLockElement === canvas;
       });
     }
+  };
+
+  R.unbindInput = function () {
+    if (R._listeners) {
+      for (var i = 0; i < R._listeners.length; i++) {
+        var l = R._listeners[i];
+        try { l[0].removeEventListener(l[1], l[2], l[3]); } catch (e) {}
+      }
+    }
+    R._listeners = null;
+    input.keys = {};
+    input.mouse.down = false;
+    input.mouse.dx = 0;
+    input.mouse.dy = 0;
+    input.mouse.locked = false;
   };
 
   var KAPI = {
@@ -1800,6 +1843,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
 
   R.dispose = function () {
     R.running = false;
+    R.unbindInput();
     if (R.net) { try { R.net.destroy(); } catch (e) {} R.net = null; }
     R.objects.slice().forEach(function (rec) { destroyObject(rec); });
     R.objects = []; R.byId = {}; R.byName = {}; R.handlers = {};
@@ -3963,7 +4007,6 @@ function importGameHTML() {
   var paste = prompt('Paste the contents of a KEngine1 exported HTML file below (or a .keng file). The editor will extract the project and load it so you can keep editing.');
   if (!paste) return;
   var project = null;
-  /* try to parse as raw JSON first */
   try { project = JSON.parse(paste); } catch (e) {}
   if (!project || !project.objects) {
     project = extractProjectFromHTML(paste);
@@ -4119,7 +4162,33 @@ $$('#hud button').forEach(function (b) {
         state.selected.getWorldPosition(p);
         orbit.target.copy(p);
       }
-    } else if (t === 'del') { if (state.selected) deleteObject(state.selected); }
+    } else if (t === 'color') {
+      if (state.selected && state.selected.userData.def) {
+        var sdef = state.selected.userData.def;
+        if (!sdef.props) sdef.props = {};
+        var curColor = sdef.props.color || '#9aa4b2';
+        var inp = document.createElement('input');
+        inp.type = 'color';
+        inp.value = curColor;
+        inp.style.position = 'fixed';
+        inp.style.left = '-9999px';
+        inp.style.top = '-9999px';
+        document.body.appendChild(inp);
+        inp.addEventListener('input', function () {
+          sdef.props.color = inp.value;
+          applyMaterial(state.selected, sdef.props);
+        });
+        inp.addEventListener('change', function () {
+          if (inp.parentNode) inp.parentNode.removeChild(inp);
+          if (state.selected) buildInspector(state.selected);
+          pushUndo();
+        });
+        inp.click();
+      } else {
+        alert('Select a part first, then click Color.');
+      }
+    }
+    else if (t === 'del') { if (state.selected) deleteObject(state.selected); }
     else if (t === 'dup') { if (state.selected) duplicateObject(state.selected); }
     else if (t === 'third') {
       if (state.runtime && state.runtime.player) {
