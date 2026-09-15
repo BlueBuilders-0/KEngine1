@@ -250,6 +250,10 @@
   ::-webkit-scrollbar-thumb{background:#3c3c3c;border-radius:0}
   ::-webkit-scrollbar-thumb:hover{background:#4a4a4a}
   ::-webkit-scrollbar-track{background:#252525}
+
+  button.file-btn{padding:3px 8px;font-size:10px;height:22px;line-height:1;white-space:nowrap;flex:0 0 auto}
+  .file-row-inner{flex:1;display:flex;gap:4px;min-width:0;align-items:center}
+  .file-row-inner input[type=text]{flex:1;min-width:0}
 </style>
 </head>
 <body>
@@ -486,6 +490,17 @@ function KRuntime(THREE, CANNON, deps, opts) {
   function uid(p) { return (p || 'o') + Math.random().toString(36).slice(2, 9); }
   function deepCopy(o) { return JSON.parse(JSON.stringify(o)); }
 
+  function resolveUrl(url) {
+    if (typeof url === 'string' && url.indexOf('asset:') === 0) {
+      var key = url.slice(6);
+      var assets = R.project && R.project.assets;
+      if (assets && assets[key]) return assets[key];
+      return '';
+    }
+    return url;
+  }
+  R.resolveUrl = resolveUrl;
+
   R.scene = new THREE.Scene();
   R.camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.08, 6000);
   R.camera.position.set(0, 2, 8);
@@ -531,6 +546,13 @@ function KRuntime(THREE, CANNON, deps, opts) {
     wheel: 0
   };
   R.input = input;
+
+  var _ray = new CANNON.Ray(new CANNON.Vec3(), new CANNON.Vec3());
+  var _rayResult = new CANNON.RaycastResult();
+  var _tmpVec3 = new THREE.Vector3();
+  var _tmpVec3b = new THREE.Vector3();
+  var _tmpVec3c = new THREE.Vector3();
+  var _tmpQuat = new THREE.Quaternion();
 
   function wedge(w, h, d) {
     var g = new THREE.BufferGeometry();
@@ -660,14 +682,15 @@ function KRuntime(THREE, CANNON, deps, opts) {
     if (!def) return;
     var vol = def.volume == null ? 0.6 : def.volume;
     if (def.synth) { synth(def.synth, vol); return; }
-    if (!def.src) return;
+    var src = resolveUrl(def.src);
+    if (!src) return;
     var ctx = audio(); if (!ctx) return;
-    if (R.buffers[def.src]) {
-      var s = ctx.createBufferSource(); s.buffer = R.buffers[def.src];
+    if (R.buffers[src]) {
+      var s = ctx.createBufferSource(); s.buffer = R.buffers[src];
       var gg = ctx.createGain(); gg.gain.value = vol;
       s.connect(gg);
       if (def.positional && rec && rec.obj && R.camera) {
-        var p = new THREE.Vector3(); rec.obj.getWorldPosition(p);
+        var p = _tmpVec3; rec.obj.getWorldPosition(p);
         var pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
         if (pan) { pan.pan.value = clamp(p.x / 20, -1, 1); gg.connect(pan); pan.connect(ctx.destination); }
         else gg.connect(ctx.destination);
@@ -675,10 +698,10 @@ function KRuntime(THREE, CANNON, deps, opts) {
       s.start(0);
       return;
     }
-    fetch(def.src).then(function (r) { return r.arrayBuffer(); }).then(function (b) {
+    fetch(src).then(function (r) { return r.arrayBuffer(); }).then(function (b) {
       return ctx.decodeAudioData(b);
     }).then(function (buf) {
-      R.buffers[def.src] = buf;
+      R.buffers[src] = buf;
       playSound(def, rec);
     }).catch(function () { synth('beep', vol); });
   }
@@ -870,39 +893,44 @@ function KRuntime(THREE, CANNON, deps, opts) {
   }
   R.applyHealthHudSettings = applyHealthHudSettings;
 
+  var _lastHealthPct = -1;
+  var _lastHealthText = '';
   function updateHealthHud() {
     if (!R.healthHud) return;
     var cfg = healthCfg();
     var pct = clamp(R.playerHealth / Math.max(1, R.maxHealth), 0, 1);
 
-    R.healthHud.fill.style.width = (pct * 100) + '%';
-    R.healthHud.fill.classList.remove('low', 'mid', 'high');
-    R.healthHud.hud.classList.remove('low');
+    if (Math.abs(pct - _lastHealthPct) > 0.001) {
+      _lastHealthPct = pct;
+      R.healthHud.fill.style.width = (pct * 100) + '%';
+      R.healthHud.fill.classList.remove('low', 'mid', 'high');
+      R.healthHud.hud.classList.remove('low');
 
-    if (pct <= 0.25) {
-      R.healthHud.fill.classList.add('low');
-      R.healthHud.hud.classList.add('low');
-    } else if (pct <= 0.6) {
-      R.healthHud.fill.classList.add('mid');
-    } else {
-      R.healthHud.fill.classList.add('high');
+      if (pct <= 0.25) {
+        R.healthHud.fill.classList.add('low');
+        R.healthHud.hud.classList.add('low');
+      } else if (pct <= 0.6) {
+        R.healthHud.fill.classList.add('mid');
+      } else {
+        R.healthHud.fill.classList.add('high');
+      }
+
+      var custom = '';
+      if (pct <= 0.25 && cfg.lowColor) custom = cfg.lowColor;
+      else if (pct <= 0.6 && cfg.midColor) custom = cfg.midColor;
+      else if (pct > 0.6 && cfg.highColor) custom = cfg.highColor;
+      R.healthHud.fill.style.background = custom || '';
     }
-
-    var custom = '';
-    if (pct <= 0.25 && cfg.lowColor) custom = cfg.lowColor;
-    else if (pct <= 0.6 && cfg.midColor) custom = cfg.midColor;
-    else if (pct > 0.6 && cfg.highColor) custom = cfg.highColor;
-    R.healthHud.fill.style.background = custom || '';
 
     var style = cfg.textStyle;
     var txt = '';
     if (style === 'number') txt = Math.round(R.playerHealth).toString();
     else if (style === 'percent') txt = Math.round(pct * 100) + '%';
     else if (style === 'fraction') txt = Math.round(R.playerHealth) + ' / ' + R.maxHealth;
-    R.healthHud.txt.textContent = txt;
-
-    var show = cfg.show;
-    R.healthHud.hud.style.display = show ? 'flex' : 'none';
+    if (txt !== _lastHealthText) {
+      _lastHealthText = txt;
+      R.healthHud.txt.textContent = txt;
+    }
   }
   R.updateHealthHud = updateHealthHud;
 
@@ -920,7 +948,6 @@ function KRuntime(THREE, CANNON, deps, opts) {
     amount = Math.max(0, amount || 0);
     R.playerHealth = Math.max(0, R.playerHealth - amount);
     updateHealthHud();
-       updateHealthHud();
     flashDamage();
     fire('playerDamaged', null, { amount: amount, health: R.playerHealth, source: source || null });
     if (R.playerHealth <= 0) {
@@ -985,11 +1012,14 @@ function KRuntime(THREE, CANNON, deps, opts) {
       if (p.emissive) { m.emissive = new THREE.Color(p.emissive); m.emissiveIntensity = p.emissiveIntensity || 1; }
     }
     if (p.texture) {
-      var tl = new THREE.TextureLoader();
-      tl.setCrossOrigin('anonymous');
-      m.map = tl.load(p.texture);
-      if ('colorSpace' in m.map) m.map.colorSpace = THREE.SRGBColorSpace;
-      if (p.textureRepeat) { m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping; m.map.repeat.set(p.textureRepeat, p.textureRepeat); }
+      var texUrl = resolveUrl(p.texture);
+      if (texUrl) {
+        var tl = new THREE.TextureLoader();
+        tl.setCrossOrigin('anonymous');
+        m.map = tl.load(texUrl);
+        if ('colorSpace' in m.map) m.map.colorSpace = THREE.SRGBColorSpace;
+        if (p.textureRepeat) { m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping; m.map.repeat.set(p.textureRepeat, p.textureRepeat); }
+      }
     }
     return m;
   }
@@ -1186,7 +1216,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
   function build(def, parent) {
     var obj = new THREE.Object3D();
     var props = def.props || (def.props = {});
-    var rec = { def: def, obj: obj, body: null, mixer: null, clips: [], current: null, uiNode: null, playerYOffset: 0 };
+    var rec = { def: def, obj: obj, body: null, mixer: null, clips: [], current: null, uiNode: null, playerYOffset: 0, pendingCollider: false };
     var t = def.type;
 
     obj.userData.kid = def.id;
@@ -1282,46 +1312,53 @@ function KRuntime(THREE, CANNON, deps, opts) {
     R.byName[def.name] = rec;
     rec.api = makeApi(rec);
 
+    var isModelType = (t === 'model' || t === 'character');
     var wantsPhysics = props.physics && props.physics !== 'none';
-    if (props.isPlayer) wantsPhysics = true;
-    if (props.isEnemy) wantsPhysics = true;
+    if (props.isPlayer || props.isEnemy) wantsPhysics = true;
+
     if (wantsPhysics && R.world) {
-      var shape;
-      var sc = def.scale || [1, 1, 1];
-      var height = (props.isPlayer && R.settings && R.settings.player && R.settings.player.height) ? R.settings.player.height : 1.7;
-      if (props.isPlayer) {
-        var radius = 0.35;
-        var hh = height / 2;
-        shape = new CANNON.Box(new CANNON.Vec3(radius, hh, radius));
-        rec.playerYOffset = hh;
-      } else if (t === 'sphere') shape = new CANNON.Sphere(0.5 * sc[0]);
-      else if (t === 'cylinder' || t === 'capsule') shape = new CANNON.Cylinder(0.5 * sc[0], 0.5 * sc[0], 1 * sc[1], 12);
-      else if (t === 'plane') shape = new CANNON.Box(new CANNON.Vec3(sc[0] * 0.5, 0.02, sc[2] * 0.5));
-      else shape = new CANNON.Box(new CANNON.Vec3(0.5 * sc[0], 0.5 * sc[1], 0.5 * sc[2]));
-      var mass = props.physics === 'static' && !props.isPlayer && !props.isEnemy ? 0 : (props.isPlayer ? 70 : (props.mass || 1));
-      if (props.isEnemy) mass = props.mass || 5;
-      var body = new CANNON.Body({ mass: mass, shape: shape, material: R.physMat });
-      var yOff = rec.playerYOffset || 0;
-      body.position.set(obj.position.x, obj.position.y + yOff, obj.position.z);
-      body.quaternion.setFromEuler(obj.rotation.x, obj.rotation.y, obj.rotation.z);
-      body.linearDamping = 0.05;
-      if (props.isPlayer) {
-        body.fixedRotation = true;
-        body.updateMassProperties();
-        body.linearDamping = 0;
-        body.allowSleep = false;
-        body.sleepSpeedLimit = 0;
-        body.sleepTimeLimit = 0;
+      if (isModelType && !props.isPlayer && !props.isEnemy) {
+        // Defer until the GLB finishes loading so the collider matches
+        // the real bounding box.
+        rec.pendingCollider = true;
+      } else {
+        var shape;
+        var sc = def.scale || [1, 1, 1];
+        var height = (props.isPlayer && R.settings && R.settings.player && R.settings.player.height) ? R.settings.player.height : 1.7;
+        if (props.isPlayer) {
+          var radius = 0.35;
+          var hh = height / 2;
+          shape = new CANNON.Box(new CANNON.Vec3(radius, hh, radius));
+          rec.playerYOffset = hh;
+        } else if (t === 'sphere') shape = new CANNON.Sphere(0.5 * sc[0]);
+        else if (t === 'cylinder' || t === 'capsule') shape = new CANNON.Cylinder(0.5 * sc[0], 0.5 * sc[0], 1 * sc[1], 12);
+        else if (t === 'plane') shape = new CANNON.Box(new CANNON.Vec3(sc[0] * 0.5, 0.02, sc[2] * 0.5));
+        else shape = new CANNON.Box(new CANNON.Vec3(0.5 * sc[0], 0.5 * sc[1], 0.5 * sc[2]));
+        var mass = props.physics === 'static' && !props.isPlayer && !props.isEnemy ? 0 : (props.isPlayer ? 70 : (props.mass || 1));
+        if (props.isEnemy) mass = props.mass || 5;
+        var body = new CANNON.Body({ mass: mass, shape: shape, material: R.physMat });
+        var yOff = rec.playerYOffset || 0;
+        body.position.set(obj.position.x, obj.position.y + yOff, obj.position.z);
+        body.quaternion.setFromEuler(obj.rotation.x, obj.rotation.y, obj.rotation.z);
+        body.linearDamping = 0.05;
+        if (props.isPlayer) {
+          body.fixedRotation = true;
+          body.updateMassProperties();
+          body.linearDamping = 0;
+          body.allowSleep = false;
+          body.sleepSpeedLimit = 0;
+          body.sleepTimeLimit = 0;
+        }
+        if (props.isEnemy) {
+          body.fixedRotation = true;
+          body.updateMassProperties();
+          body.linearDamping = 0.6;
+          body.allowSleep = false;
+        }
+        R.world.addBody(body);
+        rec.body = body;
+        R.bodies.push(rec);
       }
-      if (props.isEnemy) {
-        body.fixedRotation = true;
-        body.updateMassProperties();
-        body.linearDamping = 0.6;
-        body.allowSleep = false;
-      }
-      R.world.addBody(body);
-      rec.body = body;
-      R.bodies.push(rec);
     }
 
     if (props.isEnemy) registerEnemy(rec);
@@ -1339,7 +1376,9 @@ function KRuntime(THREE, CANNON, deps, opts) {
 
   function loadModel(rec, url, autoClip) {
     if (!url) return;
-    R.gltfLoader.load(url, function (gltf) {
+    var resolved = resolveUrl(url);
+    if (!resolved) return;
+    R.gltfLoader.load(resolved, function (gltf) {
       var root = gltf.scene;
       root.traverse(function (n) {
         if (n.isMesh) {
@@ -1371,6 +1410,38 @@ function KRuntime(THREE, CANNON, deps, opts) {
         rec.current.play();
         if (!rec.def.props.clipNames) rec.def.props.clipNames = gltf.animations.map(function (c) { return c.name; });
       }
+
+      /* ============================================================
+         FIXED: collider is now placed at the model's true world-space
+         center. `Box3.setFromObject` returns the box in WORLD space,
+         so we must NOT add `rec.obj.position` again — doing so before
+         moved the body to ~2× the object's position, which is why
+         the player appeared to walk straight through the model.
+         ============================================================ */
+      if (rec.pendingCollider && R.world) {
+        rec.pendingCollider = false;
+        // Force world matrices up-to-date so the box is measured with
+        // the object's real position / rotation / scale.
+        rec.obj.updateMatrixWorld(true);
+        var finalBox = new THREE.Box3().setFromObject(root);
+        var finalSize = new THREE.Vector3(); finalBox.getSize(finalSize);
+        var finalCenter = new THREE.Vector3(); finalBox.getCenter(finalCenter);
+        var sx = Math.max(0.05, finalSize.x / 2);
+        var sy = Math.max(0.05, finalSize.y / 2);
+        var sz = Math.max(0.05, finalSize.z / 2);
+        var shape = new CANNON.Box(new CANNON.Vec3(sx, sy, sz));
+        var mass = rec.def.props.physics === 'dynamic' ? (rec.def.props.mass || 1) : 0;
+        var body = new CANNON.Body({ mass: mass, shape: shape, material: R.physMat });
+        // finalCenter is already in world space — use it directly.
+        body.position.set(finalCenter.x, finalCenter.y, finalCenter.z);
+        // Leave quaternion at identity so the AABB stays world-aligned.
+        body.linearDamping = 0.05;
+        if (mass > 0) body.allowSleep = false;
+        R.world.addBody(body);
+        rec.body = body;
+        R.bodies.push(rec);
+      }
+
       applyBonePose(rec);
       fire('loaded', rec, {});
     }, undefined, function (e) {
@@ -1378,6 +1449,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
       var ph = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1),
         new THREE.MeshStandardMaterial({ color: 0xff5f6d, wireframe: true }));
       rec.holder.add(ph);
+      rec.pendingCollider = false;
     });
   }
   R.loadModel = loadModel;
@@ -1419,7 +1491,8 @@ function KRuntime(THREE, CANNON, deps, opts) {
       displayStyle = 'block';
     } else if (t === 'uiimage') {
       n.style.background = p.bg || 'transparent';
-      n.style.backgroundImage = 'url(' + (p.src || '') + ')';
+      var imgSrc = resolveUrl(p.src) || '';
+      if (imgSrc) n.style.backgroundImage = 'url(' + imgSrc + ')';
       n.style.backgroundSize = p.fit || 'contain';
       n.style.backgroundRepeat = p.fit === 'repeat' ? 'repeat' : 'no-repeat';
       n.style.backgroundPosition = 'center';
@@ -1628,7 +1701,17 @@ function KRuntime(THREE, CANNON, deps, opts) {
       if (!rec.body || rec.body.type === CANNON.Body.STATIC) continue;
       if (rec === (R.player && R.player.rec)) continue;
       var yOff = rec.playerYOffset || 0;
-      rec.obj.position.set(rec.body.position.x, rec.body.position.y - yOff, rec.body.position.z);
+      // Dynamic model/character: keep the visual anchored to the body.
+      if (rec.pendingCollider === false && rec.isModelBody && rec.modelCenterOffset) {
+        var off = rec.modelCenterOffset;
+        rec.obj.position.set(
+          rec.body.position.x - off.x,
+          rec.body.position.y - off.y,
+          rec.body.position.z - off.z
+        );
+      } else {
+        rec.obj.position.set(rec.body.position.x, rec.body.position.y - yOff, rec.body.position.z);
+      }
       rec.obj.quaternion.set(rec.body.quaternion.x, rec.body.quaternion.y, rec.body.quaternion.z, rec.body.quaternion.w);
       if (rec.body.position.y < -80) {
         rec.body.position.set(rec.def.pos[0], rec.def.pos[1] + 3, rec.def.pos[2]);
@@ -1639,14 +1722,14 @@ function KRuntime(THREE, CANNON, deps, opts) {
 
   function castObstacleRay(from, to, excludeBody) {
     if (!R.world) return false;
-    var ray = new CANNON.Ray(new CANNON.Vec3(from.x, from.y, from.z),
-                             new CANNON.Vec3(to.x, to.y, to.z));
-    var result = new CANNON.RaycastResult();
-    ray.intersectWorld(R.world, { mode: CANNON.Ray.CLOSEST, result: result, skipBackfaces: true });
-    if (!result.hasHit || !result.body) return false;
-    if (result.body === excludeBody) return false;
-    if (result.body.collisionResponse === false) return false;
-    if (result.distance != null && result.distance < 0.05) return false;
+    _ray.from.x = from.x; _ray.from.y = from.y; _ray.from.z = from.z;
+    _ray.to.x = to.x;   _ray.to.y = to.y;   _ray.to.z = to.z;
+    _rayResult.reset();
+    _ray.intersectWorld(R.world, { mode: CANNON.Ray.CLOSEST, result: _rayResult, skipBackfaces: true });
+    if (!_rayResult.hasHit || !_rayResult.body) return false;
+    if (_rayResult.body === excludeBody) return false;
+    if (_rayResult.body.collisionResponse === false) return false;
+    if (_rayResult.distance != null && _rayResult.distance < 0.05) return false;
     return true;
   }
 
@@ -1663,6 +1746,8 @@ function KRuntime(THREE, CANNON, deps, opts) {
     R.settings = settings;
     R.maxHealth = settings.player && settings.player.maxHealth ? settings.player.maxHealth : 100;
     R.playerHealth = R.maxHealth;
+    _lastHealthPct = -1;
+    _lastHealthText = '';
     ensureHealthHud();
     updateHealthHud();
     if (!settings.player || !settings.player.enabled) return;
@@ -1720,7 +1805,8 @@ function KRuntime(THREE, CANNON, deps, opts) {
         radius: 0.35,
         yOffset: playerRec.playerYOffset,
         _peakFallVy: 0,
-        _wasAirborne: false
+        _wasAirborne: false,
+        _rayTick: 0
       };
     } else {
       var body2 = null;
@@ -1750,7 +1836,8 @@ function KRuntime(THREE, CANNON, deps, opts) {
         radius: 0.35,
         yOffset: height / 2,
         _peakFallVy: 0,
-        _wasAirborne: false
+        _wasAirborne: false,
+        _rayTick: 0
       };
       if (!R.world) R.camera.position.set(start.x, start.y + 1.6, start.z);
     }
@@ -1808,30 +1895,33 @@ function KRuntime(THREE, CANNON, deps, opts) {
 
     if (p.isObjectPlayer) {
       if (p.body && moving && !p.fly) {
-        var halfExtent = getPlayerHalfExtent(p);
-        var lookAhead = halfExtent + 0.25;
-        var bodyPos = p.body.position;
-        var startOffset = halfExtent + 0.02;
-        var blockedX = false, blockedZ = false;
-        if (dx !== 0) {
-          var originX = bodyPos.x + Math.sign(dx) * startOffset;
-          blockedX = castObstacleRay(
-            { x: originX, y: bodyPos.y, z: bodyPos.z },
-            { x: originX + Math.sign(dx) * lookAhead, y: bodyPos.y, z: bodyPos.z },
-            p.body
-          );
+        p._rayTick = (p._rayTick + 1) & 1;
+        if (p._rayTick === 0) {
+          var halfExtent = getPlayerHalfExtent(p);
+          var lookAhead = halfExtent + 0.25;
+          var bodyPos = p.body.position;
+          var startOffset = halfExtent + 0.02;
+          var blockedX = false, blockedZ = false;
+          if (dx !== 0) {
+            var ox = bodyPos.x + Math.sign(dx) * startOffset;
+            blockedX = castObstacleRay(
+              { x: ox, y: bodyPos.y, z: bodyPos.z },
+              { x: ox + Math.sign(dx) * lookAhead, y: bodyPos.y, z: bodyPos.z },
+              p.body
+            );
+          }
+          if (dz !== 0) {
+            var oz = bodyPos.z + Math.sign(dz) * startOffset;
+            blockedZ = castObstacleRay(
+              { x: bodyPos.x, y: bodyPos.y, z: oz },
+              { x: bodyPos.x, y: bodyPos.y, z: oz + Math.sign(dz) * lookAhead },
+              p.body
+            );
+          }
+          if (blockedX && blockedZ) { blockedX = false; blockedZ = false; }
+          if (blockedX) dx = 0;
+          if (blockedZ) dz = 0;
         }
-        if (dz !== 0) {
-          var originZ = bodyPos.z + Math.sign(dz) * startOffset;
-          blockedZ = castObstacleRay(
-            { x: bodyPos.x, y: bodyPos.y, z: originZ },
-            { x: bodyPos.x, y: bodyPos.y, z: originZ + Math.sign(dz) * lookAhead },
-            p.body
-          );
-        }
-        if (blockedX && blockedZ) { blockedX = false; blockedZ = false; }
-        if (blockedX) dx = 0;
-        if (blockedZ) dz = 0;
       }
 
       if (p.body) {
@@ -1927,12 +2017,13 @@ function KRuntime(THREE, CANNON, deps, opts) {
       } else {
         var eyeY = p.obj.position.y + head * 0.9;
         R.camera.position.set(p.obj.position.x, eyeY, p.obj.position.z);
-        var dir = new THREE.Vector3(
+        var d = _tmpVec3;
+        d.set(
           -Math.sin(cam.yaw) * Math.cos(cam.pitch),
           Math.sin(cam.pitch),
           -Math.cos(cam.yaw) * Math.cos(cam.pitch)
         );
-        R.camera.lookAt(R.camera.position.x + dir.x, R.camera.position.y + dir.y, R.camera.position.z + dir.z);
+        R.camera.lookAt(R.camera.position.x + d.x, R.camera.position.y + d.y, R.camera.position.z + d.z);
       }
     } else {
       if (p.body) {
@@ -1946,12 +2037,13 @@ function KRuntime(THREE, CANNON, deps, opts) {
         R.camera.position.x += dx * spd * dt;
         R.camera.position.z += dz * spd * dt;
       }
-      var dir2 = new THREE.Vector3(
+      var d2 = _tmpVec3b;
+      d2.set(
         -Math.sin(cam.yaw) * Math.cos(cam.pitch),
         Math.sin(cam.pitch),
         -Math.cos(cam.yaw) * Math.cos(cam.pitch)
       );
-      R.camera.lookAt(R.camera.position.x + dir2.x, R.camera.position.y + dir2.y, R.camera.position.z + dir2.z);
+      R.camera.lookAt(R.camera.position.x + d2.x, R.camera.position.y + d2.y, R.camera.position.z + d2.z);
     }
   }
 
@@ -1999,7 +2091,7 @@ function KRuntime(THREE, CANNON, deps, opts) {
         if (R.time - (rec._lastHitTime || -99) > cool) {
           rec._lastHitTime = R.time;
           var dmg = props.enemyDamage == null ? 10 : props.enemyDamage;
-                   R.damagePlayer(dmg, rec);
+          R.damagePlayer(dmg, rec);
           fire('enemyAttack', rec, { damage: dmg, enemy: rec.def.name });
           if (props.knockback && player.body) {
             var kb = props.knockback;
@@ -2123,11 +2215,10 @@ function KRuntime(THREE, CANNON, deps, opts) {
       );
     }
     if (c.cam) {
-      var w = new THREE.Vector3();
+      var w = _tmpVec3c;
       c.cam.getWorldPosition(w);
       R.camera.position.copy(w);
-      var q = new THREE.Quaternion();
-      c.cam.getWorldQuaternion(q);
+      var q = c.cam.getWorldQuaternion(_tmpQuat);
       R.camera.quaternion.copy(q);
     }
     if (c.t > cs.duration) R.cutscene = null;
@@ -2351,6 +2442,8 @@ function KRuntime(THREE, CANNON, deps, opts) {
     R.uiRoot = uiRoot;
     if (uiRoot) uiRoot.innerHTML = '';
     R.healthHud = null;
+    _lastHealthPct = -1;
+    _lastHealthText = '';
     var s = project.settings || {};
     R.settings = s;
     R.gravity = s.gravity == null ? -9.81 : s.gravity;
@@ -2391,13 +2484,16 @@ function KRuntime(THREE, CANNON, deps, opts) {
       u.sunPosition.value.copy(sun);
       R.scene.add(sky);
     } else if (s.skybox && s.skybox.type === 'hdr' && s.skybox.url) {
-      var rgbe = new RGBELoader();
-      rgbe.setCrossOrigin('anonymous');
-      rgbe.load(s.skybox.url, function (tex) {
-        tex.mapping = THREE.EquirectangularReflectionMapping;
-        R.scene.background = tex;
-        R.scene.environment = tex;
-      }, undefined, function () {});
+      var hdrUrl = resolveUrl(s.skybox.url);
+      if (hdrUrl) {
+        var rgbe = new RGBELoader();
+        rgbe.setCrossOrigin('anonymous');
+        rgbe.load(hdrUrl, function (tex) {
+          tex.mapping = THREE.EquirectangularReflectionMapping;
+          R.scene.background = tex;
+          R.scene.environment = tex;
+        }, undefined, function () {});
+      }
     } else if (s.skybox && s.skybox.type === 'color') {
       R.scene.background = new THREE.Color(s.skybox.color || '#0b0e13');
     }
@@ -2595,6 +2691,7 @@ const state = {
   runtime: null,
   snap: false,
   grid: true,
+  assets: {},
   settings: {
     bg: '#0b0e13',
     gravity: -9.81,
@@ -2645,6 +2742,38 @@ const state = {
   redoStack: [],
   undoLock: false
 };
+
+function isBigDataUrl(url) {
+  return typeof url === 'string' && url.indexOf('data:') === 0 && url.length > 4096;
+}
+function storeAssetIfBig(url) {
+  if (!isBigDataUrl(url)) return url;
+  for (var k in state.assets) {
+    if (state.assets[k] === url) return 'asset:' + k;
+  }
+  var key = 'a_' + Math.random().toString(36).slice(2, 10);
+  state.assets[key] = url;
+  return 'asset:' + key;
+}
+function resolveAssetRef(url) {
+  if (typeof url === 'string' && url.indexOf('asset:') === 0) {
+    return state.assets[url.slice(6)] || '';
+  }
+  return url;
+}
+function assetLabel(url) {
+  if (typeof url !== 'string') return '';
+  if (url.indexOf('asset:') === 0) {
+    var data = state.assets[url.slice(6)] || '';
+    var kb = Math.round(data.length / 1024);
+    return '[embedded ' + kb + ' KB]';
+  }
+  if (url.indexOf('data:') === 0) {
+    var kb2 = Math.round(url.length / 1024);
+    return '[embedded ' + kb2 + ' KB]';
+  }
+  return url;
+}
 
 function setStatus(txt) { $('#statusText').textContent = txt; }
 function updateStatusBar() {
@@ -2704,8 +2833,8 @@ function defaultDef(type) {
     case 'text': d.pos = [0, 2, 0]; d.props = { text: 'Hello KEngine1', size: 1, color: '#ffffff', bg: 'transparent' }; break;
     case 'light': d.pos = [4, 8, 4]; d.props = { light: 'point', color: '#ffffff', intensity: 20, distance: 0, shadows: true }; break;
     case 'camera': d.pos = [0, 3, 10]; d.props = { fov: 60, near: 0.1, far: 4000, main: false }; d.name = 'Camera'; break;
-    case 'model': d.props = { url: '', autoscale: true, physics: 'none' }; d.name = 'Model'; break;
-    case 'character': d.pos = [0, 0, 0]; d.props = { url: MODEL_SOURCES[0].u, autoscale: true, clip: '', flipModel: false, physics: 'none', isEnemy: false, enemySpeed: 2.5, enemyDamage: 10, enemyRange: 30, enemyAttackRange: 1.4, enemyCooldown: 1, enemyHealth: 50 }; d.name = 'Character'; break;
+    case 'model': d.props = { url: '', autoscale: true, physics: 'static' }; d.name = 'Model'; break;
+    case 'character': d.pos = [0, 0, 0]; d.props = { url: MODEL_SOURCES[0].u, autoscale: true, clip: '', flipModel: false, physics: 'static', isEnemy: false, enemySpeed: 2.5, enemyDamage: 10, enemyRange: 30, enemyAttackRange: 1.4, enemyCooldown: 1, enemyHealth: 50 }; d.name = 'Character'; break;
     case 'particles': d.pos = [0, 2, 0]; d.props = { count: 400, size: 0.09, spread: 5, speed: 1, color: '#7fd8ff' }; d.name = 'Particles'; break;
     case 'sound': d.props = { synth: 'beep', src: '', volume: 0.6, autoplay: false }; d.name = 'Sound'; break;
     case 'spawn': d.pos = [0, 0.1, 0]; d.props = {}; d.name = 'SpawnPoint'; break;
@@ -2771,12 +2900,15 @@ function makeMaterialForEditor(props) {
     if (props.emissive) { m.emissive = new THREE.Color(props.emissive); m.emissiveIntensity = props.emissiveIntensity || 1; }
   }
   if (props.texture) {
-    var tl = new THREE.TextureLoader();
-    tl.setCrossOrigin('anonymous');
-    var tx = tl.load(props.texture);
-    if ('colorSpace' in tx) tx.colorSpace = THREE.SRGBColorSpace;
-    if (props.textureRepeat) { tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(props.textureRepeat, props.textureRepeat); }
-    m.map = tx;
+    var texUrl = resolveAssetRef(props.texture);
+    if (texUrl) {
+      var tl = new THREE.TextureLoader();
+      tl.setCrossOrigin('anonymous');
+      var tx = tl.load(texUrl);
+      if ('colorSpace' in tx) tx.colorSpace = THREE.SRGBColorSpace;
+      if (props.textureRepeat) { tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(props.textureRepeat, props.textureRepeat); }
+      m.map = tx;
+    }
   }
   return m;
 }
@@ -2924,8 +3056,40 @@ function makeTextPlane(text, size, color, bg) {
   );
 }
 
+const editorModelCache = new Map();
+
+function collectBones(root) {
+  var bones = [];
+  root.traverse(function (n) { if (n.isBone) bones.push(n); });
+  return bones;
+}
+
+function applyEditorModelTransform(root, props) {
+  var box = new THREE.Box3().setFromObject(root);
+  var size = new THREE.Vector3();
+  box.getSize(size);
+  var maxDim = Math.max(size.x, size.y, size.z) || 1;
+  if (props.autoscale !== false && maxDim > 4) root.scale.setScalar(2 / maxDim);
+  if (props.flipModel) root.rotation.y = Math.PI;
+}
+
 function loadEditorModel(obj, holder, props, type) {
-  editorGltf.load(props.url, function (gltf) {
+  var url = resolveAssetRef(props.url);
+  if (!url) return;
+
+  if (editorModelCache.has(url)) {
+    var cached = editorModelCache.get(url);
+    var clone = cached.scene.clone(true);
+    applyEditorModelTransform(clone, props);
+    holder.add(clone);
+    obj.userData.loadedModel = clone;
+    obj.userData.animations = cached.animations;
+    obj.userData.bones = collectBones(clone);
+    if (state.selected === obj) buildInspector(obj);
+    return;
+  }
+
+  editorGltf.load(url, function (gltf) {
     var root = gltf.scene;
     root.traverse(function (n) {
       if (n.isMesh) {
@@ -2934,18 +3098,13 @@ function loadEditorModel(obj, holder, props, type) {
         if (n.material && n.material.map && 'colorSpace' in n.material.map) n.material.map.colorSpace = THREE.SRGBColorSpace;
       }
     });
-    var box = new THREE.Box3().setFromObject(root);
-    var size = new THREE.Vector3();
-    box.getSize(size);
-    var maxDim = Math.max(size.x, size.y, size.z) || 1;
-    if (props.autoscale !== false && maxDim > 4) root.scale.setScalar(2 / maxDim);
-    if (props.flipModel) root.rotation.y = Math.PI;
+    editorModelCache.set(url, { scene: root, animations: gltf.animations || [] });
+
+    applyEditorModelTransform(root, props);
     holder.add(root);
     obj.userData.loadedModel = root;
     obj.userData.animations = gltf.animations || [];
-    var bones = [];
-    root.traverse(function (n) { if (n.isBone) bones.push(n); });
-    obj.userData.bones = bones;
+    obj.userData.bones = collectBones(root);
     if (state.selected === obj) buildInspector(obj);
   }, undefined, function () {
     var ph = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1),
@@ -2957,7 +3116,7 @@ function loadEditorModel(obj, holder, props, type) {
 /* =====================================================================
    SECTION 4 - SERIALIZE / DESERIALIZE
    ===================================================================== */
-function serializeProject() {
+function serializeProject(skipAssets) {
   var objects = [];
   editorScene.traverse(function (o) {
     if (!o.userData || !o.userData.def) return;
@@ -2968,7 +3127,7 @@ function serializeProject() {
     d.visible = o.visible;
     objects.push(d);
   });
-  return {
+  var out = {
     engine: 'KEngine1',
     version: 3,
     name: state.projectName,
@@ -2979,6 +3138,8 @@ function serializeProject() {
     cutscenes: deepCopy(state.cutscenes),
     objects: objects
   };
+  if (!skipAssets) out.assets = state.assets;
+  return out;
 }
 
 function clearEditorScene() {
@@ -3011,6 +3172,7 @@ function applyProject(project) {
     lowColor: '', midColor: '', highColor: ''
   };
   if (state.settings.player.fallDamage == null) state.settings.player.fallDamage = true;
+  if (project.assets) state.assets = project.assets;
   state.vars = project.vars ? deepCopy(project.vars) : {};
   state.missions = project.missions ? deepCopy(project.missions) : [];
   state.cutscenes = project.cutscenes ? deepCopy(project.cutscenes) : [];
@@ -3173,7 +3335,8 @@ function refreshUILayer() {
       n.textContent = p.text || '';
     } else if (t === 'uiimage') {
       n.style.background = p.bg || 'transparent';
-      n.style.backgroundImage = 'url(' + (p.src || '') + ')';
+      var imgSrc = resolveAssetRef(p.src) || '';
+      if (imgSrc) n.style.backgroundImage = 'url(' + imgSrc + ')';
       n.style.backgroundSize = p.fit || 'contain';
       n.style.backgroundRepeat = p.fit === 'repeat' ? 'repeat' : 'no-repeat';
       n.style.backgroundPosition = 'center';
@@ -3297,6 +3460,7 @@ function field(label, value, onchange, type) {
   row.appendChild(inp);
   return row;
 }
+
 function selectField(label, value, options, onchange) {
   var row = el('div', 'row');
   row.appendChild(el('label', null, label));
@@ -3338,6 +3502,89 @@ function vecRow(label, arr, onchange) {
   });
   return row;
 }
+
+function pickFile(accept, opts, cb) {
+  opts = opts || {};
+  var inp = document.createElement('input');
+  inp.type = 'file';
+  if (accept) inp.accept = accept;
+  inp.style.position = 'fixed';
+  inp.style.left = '-9999px';
+  inp.style.top = '-9999px';
+  document.body.appendChild(inp);
+  inp.onchange = function () {
+    var f = inp.files && inp.files[0];
+    if (!f) { if (inp.parentNode) inp.parentNode.removeChild(inp); return; }
+    var maxMB = opts.maxMB || 30;
+    if (f.size > maxMB * 1024 * 1024) {
+      var ok = confirm(
+        'This file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.\n\n' +
+        'Embedding large files as data URLs makes the project and the exported HTML much bigger and may slow the editor.\n\n' +
+        'Continue anyway?'
+      );
+      if (!ok) { if (inp.parentNode) inp.parentNode.removeChild(inp); return; }
+    }
+    var reader = new FileReader();
+    reader.onload = function () {
+      if (inp.parentNode) inp.parentNode.removeChild(inp);
+      try { cb(reader.result, f); }
+      catch (e) { console.warn('KEngine1 file import error', e); }
+    };
+    reader.onerror = function () {
+      if (inp.parentNode) inp.parentNode.removeChild(inp);
+      alert('Could not read the file.');
+    };
+    reader.readAsDataURL(f);
+  };
+  inp.click();
+}
+
+function fileButton(label, accept, onPick, maxMB) {
+  var b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'file-btn';
+  b.textContent = label;
+  b.title = 'Choose a file from your computer';
+  b.onclick = function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    pickFile(accept, { maxMB: maxMB }, onPick);
+  };
+  return b;
+}
+
+function fileField(label, value, onChange, accept, maxMB) {
+  var row = el('div', 'row');
+  row.appendChild(el('label', null, label));
+  var inner = el('div', 'file-row-inner');
+  var inp = el('input');
+  inp.type = 'text';
+  inp.value = value == null ? '' : value;
+  inp.placeholder = 'URL or click Browse to embed a file';
+  inp.oninput = function () {
+    var v = storeAssetIfBig(inp.value);
+    onChange(v);
+  };
+  inner.appendChild(inp);
+  var status = el('span');
+  status.className = 'hint';
+  status.style.flex = '0 0 auto';
+  status.style.marginLeft = '4px';
+  status.textContent = isBigDataUrl(value) ? assetLabel(value) :
+    (typeof value === 'string' && value.indexOf('asset:') === 0 ? assetLabel(value) : '');
+  var btn = fileButton('Browse', accept, function (dataUrl, f) {
+    var ref = storeAssetIfBig(dataUrl);
+    inp.value = ref;
+    onChange(ref);
+    status.textContent = '[embedded ' + Math.round(f.size / 1024) + ' KB]';
+    setStatus('Loaded file: ' + f.name + ' (' + (f.size / 1024).toFixed(1) + ' KB)');
+  }, maxMB);
+  inner.appendChild(btn);
+  inner.appendChild(status);
+  row.appendChild(inner);
+  return row;
+}
+
 let inspectorTransformRows = [];
 let selectedBoneName = null;
 
@@ -3592,7 +3839,7 @@ function buildInspector(obj) {
 
     if (def.type === 'uiimage') {
       var si = section('Image');
-      si.appendChild(field('Image URL', props.src || '', function (v) { props.src = v; refreshUILayer(); }));
+      si.appendChild(fileField('Image URL', props.src || '', function (v) { props.src = v; refreshUILayer(); }, 'image/*', 15));
       si.appendChild(selectField('Fit', props.fit || 'contain', [
         { label: 'Contain', value: 'contain' }, { label: 'Cover', value: 'cover' },
         { label: 'Stretch', value: '100% 100%' }, { label: 'Repeat', value: 'repeat' }
@@ -3658,7 +3905,7 @@ function buildInspector(obj) {
     s3.appendChild(field('Metalness', props.metalness == null ? 0.1 : props.metalness, function (v) { props.metalness = v; applyMaterial(obj, props); }, 'number'));
     s3.appendChild(field('Roughness', props.roughness == null ? 0.6 : props.roughness, function (v) { props.roughness = v; applyMaterial(obj, props); }, 'number'));
     s3.appendChild(field('Opacity', props.opacity == null ? 1 : props.opacity, function (v) { props.opacity = v; applyMaterial(obj, props); }, 'number'));
-    s3.appendChild(field('Texture URL', props.texture || '', function (v) { props.texture = v; applyMaterial(obj, props); }));
+    s3.appendChild(fileField('Texture URL', props.texture || '', function (v) { props.texture = v; applyMaterial(obj, props); }, 'image/*', 15));
     s3.appendChild(field('Texture Repeat', props.textureRepeat || 1, function (v) { props.textureRepeat = v; applyMaterial(obj, props); }, 'number'));
     s3.appendChild(checkField('Cast Shadow', props.castShadow !== false, function (v) { props.castShadow = v; applyMaterial(obj, props); }));
     s3.appendChild(checkField('Receive Shadow', props.receiveShadow !== false, function (v) { props.receiveShadow = v; applyMaterial(obj, props); }));
@@ -3701,7 +3948,7 @@ function buildInspector(obj) {
 
   if (def.type === 'model' || def.type === 'character') {
     var sm = section('Model');
-    sm.appendChild(field('URL (.glb / .gltf)', props.url || '', function (v) { props.url = v; rebuildObject(obj); }));
+    sm.appendChild(fileField('URL (.glb / .gltf)', props.url || '', function (v) { props.url = v; rebuildObject(obj); }, '.glb,.gltf,model/gltf-binary,model/gltf+json', 60));
     sm.appendChild(checkField('Auto scale to 2 units', props.autoscale !== false, function (v) { props.autoscale = v; rebuildObject(obj); }));
     if (def.type === 'character') {
       sm.appendChild(checkField('Flip model 180\u00B0 (turn to face away from camera)', !!props.flipModel, function (v) { props.flipModel = v; rebuildObject(obj); }));
@@ -3731,7 +3978,7 @@ function buildInspector(obj) {
     ss.appendChild(selectField('Synth sound', props.synth || '', [{ label: '(none - use URL)', value: '' }].concat(
       SYNTH_SOUNDS.map(function (s) { return { label: s.n, value: s.k }; })
     ), function (v) { props.synth = v; }));
-    ss.appendChild(field('Audio URL', props.src || '', function (v) { props.src = v; }));
+    ss.appendChild(fileField('Audio URL', props.src || '', function (v) { props.src = v; }, 'audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.webm', 20));
     ss.appendChild(field('Volume', props.volume == null ? 0.6 : props.volume, function (v) { props.volume = v; }, 'number'));
     ss.appendChild(checkField('Autoplay on start', !!props.autoplay, function (v) { props.autoplay = v; }));
     var testBtn = el('button', null, 'Test Sound');
@@ -3829,6 +4076,89 @@ function buildToolbox() {
   var pane = $('#pane-toolbox');
   pane.innerHTML = '';
 
+  var imp = el('div', 'sec');
+  imp.appendChild(el('h4', null, 'Import Local Files (from this computer)'));
+  var impInner = el('div', 'inner');
+  impInner.appendChild(el('p', 'hint', 'Pick files from your computer — they are embedded inside the project as data URLs, so exports remain self-contained and work offline.'));
+
+  var importModelBtn = el('button', 'primary', 'Import Model File (.glb / .gltf)');
+  importModelBtn.style.width = '100%';
+  importModelBtn.style.marginBottom = '4px';
+  importModelBtn.onclick = function () {
+    pickFile('.glb,.gltf,model/gltf-binary,model/gltf+json', { maxMB: 60 }, function (dataUrl, f) {
+      var d = defaultDef('character');
+      d.name = (f.name || 'ImportedModel').replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9]/g, '') || 'ImportedModel';
+      d.props.url = storeAssetIfBig(dataUrl);
+      d.pos = [0, 0, 0];
+      addDef(d);
+      setStatus('Imported model: ' + f.name);
+    });
+  };
+  impInner.appendChild(importModelBtn);
+
+  var importSoundBtn = el('button', 'primary', 'Import Sound File (.mp3 / .wav / .ogg / ...)');
+  importSoundBtn.style.width = '100%';
+  importSoundBtn.style.marginBottom = '4px';
+  importSoundBtn.onclick = function () {
+    pickFile('audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.webm', { maxMB: 20 }, function (dataUrl, f) {
+      var d = defaultDef('sound');
+      d.name = (f.name || 'ImportedSound').replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9]/g, '') || 'ImportedSound';
+      d.props.synth = '';
+      d.props.src = storeAssetIfBig(dataUrl);
+      addDef(d);
+      setStatus('Imported sound: ' + f.name);
+    });
+  };
+  impInner.appendChild(importSoundBtn);
+
+  var importImageBtn = el('button', 'primary', 'Import Image File (.png / .jpg / .webp / ...)');
+  importImageBtn.style.width = '100%';
+  importImageBtn.style.marginBottom = '4px';
+  importImageBtn.onclick = function () {
+    pickFile('image/*', { maxMB: 15 }, function (dataUrl, f) {
+      var ref = storeAssetIfBig(dataUrl);
+      var sel = state.selected && state.selected.userData.def;
+      if (sel && ['part','sphere','cylinder','cone','torus','capsule','wedge','plane'].indexOf(sel.type) >= 0) {
+        sel.props.texture = ref;
+        applyMaterial(state.selected, sel.props);
+        buildInspector(state.selected);
+        setStatus('Applied texture: ' + f.name);
+        return;
+      }
+      if (sel && sel.type === 'uiimage') {
+        sel.props.src = ref;
+        refreshUILayer();
+        buildInspector(state.selected);
+        setStatus('Applied UI image: ' + f.name);
+        return;
+      }
+      var d = defaultDef('uiimage');
+      d.name = (f.name || 'ImportedImage').replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9]/g, '') || 'ImportedImage';
+      d.props.src = ref;
+      addDef(d);
+      setStatus('Imported image: ' + f.name);
+    });
+  };
+  impInner.appendChild(importImageBtn);
+
+  var importHdrBtn = el('button', 'primary', 'Import HDR Skybox (.hdr / equirect image)');
+  importHdrBtn.style.width = '100%';
+  importHdrBtn.style.marginBottom = '4px';
+  importHdrBtn.onclick = function () {
+    pickFile('.hdr,image/vnd.radiance,image/*', { maxMB: 40 }, function (dataUrl, f) {
+      state.settings.skybox.type = 'hdr';
+      state.settings.skybox.url = storeAssetIfBig(dataUrl);
+      applyWorldSettings();
+      buildWorldPanel();
+      setStatus('Imported HDR skybox: ' + f.name);
+    });
+  };
+  impInner.appendChild(importHdrBtn);
+
+  impInner.appendChild(el('p', 'hint', 'Tip: for a shape selected in the scene, "Import Image File" applies the image as its texture. For a UIImage selected, it replaces the image. Otherwise a new UIImage element is created.'));
+  imp.appendChild(impInner);
+  pane.appendChild(imp);
+
   var m = el('div', 'sec');
   m.appendChild(el('h4', null, 'Model Toolbox (online sources)'));
   var mi = el('div', 'inner');
@@ -3863,6 +4193,10 @@ function buildToolbox() {
   customRow.style.marginTop = '6px';
   var customUrl = el('input');
   customUrl.placeholder = 'Paste any .glb / .gltf URL';
+  var customBrowse = fileButton('Browse', '.glb,.gltf,model/gltf-binary,model/gltf+json', function (dataUrl) {
+    customUrl.value = storeAssetIfBig(dataUrl);
+    setStatus('Model file loaded into URL field');
+  }, 60);
   var customBtn = el('button', null, 'Add');
   customBtn.onclick = function () {
     if (!customUrl.value) return;
@@ -3872,7 +4206,7 @@ function buildToolbox() {
     addDef(d);
     customUrl.value = '';
   };
-  customRow.appendChild(customUrl); customRow.appendChild(customBtn);
+  customRow.appendChild(customUrl); customRow.appendChild(customBrowse); customRow.appendChild(customBtn);
   mi.appendChild(customRow);
   mi.appendChild(el('p', 'hint', 'Sources load directly from their public URLs. CORS-enabled hosts work best.'));
   m.appendChild(mi);
@@ -4512,7 +4846,9 @@ function buildWorldPanel() {
     { label: 'HDR / equirect image', value: 'hdr' },
     { label: 'Flat color', value: 'color' }
   ], function (v) { s.skybox.type = v; applyWorldSettings(); buildWorldPanel(); }));
-  if (s.skybox.type === 'hdr') s1.appendChild(field('HDR URL', s.skybox.url || '', function (v) { s.skybox.url = v; applyWorldSettings(); }));
+  if (s.skybox.type === 'hdr') {
+    s1.appendChild(fileField('HDR URL', s.skybox.url || '', function (v) { s.skybox.url = v; applyWorldSettings(); }, '.hdr,image/vnd.radiance,image/*', 40));
+  }
   if (s.skybox.type === 'procedural') {
     s1.appendChild(field('Sun elevation', s.skybox.elevation, function (v) { s.skybox.elevation = v; applyWorldSettings(); }, 'number'));
     s1.appendChild(field('Sun azimuth', s.skybox.azimuth, function (v) { s.skybox.azimuth = v; applyWorldSettings(); }, 'number'));
@@ -4847,14 +5183,17 @@ function applyWorldSettings() {
     editorScene.add(sky);
     editorDir.position.copy(sun).multiplyScalar(50);
   } else if (s.skybox.type === 'hdr' && s.skybox.url) {
-    var rgbe = new RGBELoader();
-    rgbe.setCrossOrigin('anonymous');
-    rgbe.load(s.skybox.url, function (tex) {
-      tex.mapping = THREE.EquirectangularReflectionMapping;
-      tex.name = '__sky';
-      editorScene.background = tex;
-      editorScene.environment = tex;
-    }, undefined, function () {});
+    var hdrUrl = resolveAssetRef(s.skybox.url);
+    if (hdrUrl) {
+      var rgbe = new RGBELoader();
+      rgbe.setCrossOrigin('anonymous');
+      rgbe.load(hdrUrl, function (tex) {
+        tex.mapping = THREE.EquirectangularReflectionMapping;
+        tex.name = '__sky';
+        editorScene.background = tex;
+        editorScene.environment = tex;
+      }, undefined, function () {});
+    }
   }
 }
 
@@ -5234,7 +5573,7 @@ function importGameHTML() {
    ===================================================================== */
 function pushUndo() {
   if (state.undoLock) return;
-  state.undoStack.push(JSON.stringify(serializeProject()));
+  state.undoStack.push(JSON.stringify(serializeProject(true)));
   if (state.undoStack.length > 40) state.undoStack.shift();
   state.redoStack = [];
 }
@@ -5246,15 +5585,19 @@ function scheduleUndo() {
 function undo() {
   if (!state.undoStack.length) return;
   state.undoLock = true;
-  state.redoStack.push(JSON.stringify(serializeProject()));
-  applyProject(JSON.parse(state.undoStack.pop()));
+  state.redoStack.push(JSON.stringify(serializeProject(true)));
+  var snap = JSON.parse(state.undoStack.pop());
+  if (!snap.assets) snap.assets = state.assets;
+  applyProject(snap);
   state.undoLock = false;
 }
 function redo() {
   if (!state.redoStack.length) return;
   state.undoLock = true;
-  state.undoStack.push(JSON.stringify(serializeProject()));
-  applyProject(JSON.parse(state.redoStack.pop()));
+  state.undoStack.push(JSON.stringify(serializeProject(true)));
+  var snap = JSON.parse(state.redoStack.pop());
+  if (!snap.assets) snap.assets = state.assets;
+  applyProject(snap);
   state.undoLock = false;
 }
 
@@ -5481,7 +5824,7 @@ $('#btnNew').onclick = function () {
   state.projectId = null;
   state.undoStack = [];
   state.redoStack = [];
-  var empty = { name: 'Untitled Game', settings: deepCopy(state.settings), vars: {}, missions: [], cutscenes: [], objects: [] };
+  var empty = { name: 'Untitled Game', settings: deepCopy(state.settings), assets: {}, vars: {}, missions: [], cutscenes: [], objects: [] };
   applyProject(empty);
   showEditor();
 };
@@ -5759,6 +6102,7 @@ window.addEventListener('load', function () {
     state.projectId = null;
     state.undoStack = [];
     state.redoStack = [];
+    state.assets = {};
     var project = deepCopy(STARTER);
     project.settings = deepCopy(state.settings);
     project.settings.player.enabled = true;
@@ -5778,6 +6122,7 @@ window.addEventListener('load', function () {
       lowColor: '', midColor: '', highColor: ''
     };
     project.settings.save.key = 'starter_game';
+    project.assets = {};
     applyProject(project);
     buildWorldPanel();
     buildGraphicsPanel();
@@ -5798,7 +6143,8 @@ window.KEngine1 = {
   state: state,
   serialize: serializeProject,
   apply: applyProject,
-  runtimeFactory: KRuntime
+  runtimeFactory: KRuntime,
+  pickFile: pickFile
 };
 </script>
 </body>
